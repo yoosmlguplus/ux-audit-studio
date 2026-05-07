@@ -2216,39 +2216,105 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
   const latestIter = flow.iterations[flow.iterations.length - 1];
   const prevIter = displayIterIdx > 0 ? flow.iterations[displayIterIdx - 1] : null;
 
+  const [auditProgress, setAuditProgress] = useState("");
+
   const runRealAudit = async () => {
     setAuditRunning(true);
     try {
-      const frame = flow.frames[0];
-      if (!frame) { setAuditRunning(false); return; }
+      const allScreenIssues = [];
+      const allFlowIssues = [];
+      const allPasses = [];
+      let totalScore = 0;
+      let totalPolicyScore = 0;
+      let totalDsScore = 0;
 
-      const res = await runAIAudit(flow.name, {
-        mode: "image",
-        image: frame.image,
-        serviceType: "brand",
-      });
+      // 1. 각 프레임 개별 검수
+      for (let i = 0; i < flow.frames.length; i++) {
+        const frame = flow.frames[i];
+        setAuditProgress(`${frame.name} 검수 중... (${i + 1}/${flow.frames.length})`);
 
-      if (res.error) {
-        setAuditRunning(false);
-        return;
+        const res = await runAIAudit(frame.name, {
+          mode: "image",
+          image: frame.image,
+          serviceType: "brand",
+        });
+
+        if (res.error) continue;
+
+        // 이슈에 프레임 정보 추가
+        (res.issues || []).forEach(iss => {
+          allScreenIssues.push({ ...iss, scope: "screen", frameName: frame.name, frameIdx: i });
+        });
+        (res.passes || []).forEach(p => {
+          allPasses.push({ ...p, frameName: frame.name, frameIdx: i });
+        });
+
+        totalScore += res.score || 0;
+        totalPolicyScore += res.breakdown?.policy || 0;
+        totalDsScore += res.breakdown?.ds || 0;
       }
 
-      res.input = { type: "figma", screenName: flow.name, imagePreview: frame.image, serviceType: "brand" };
-      res.id = Date.now();
+      // 2. 플로우 레벨 검수 (전체 흐름 분석)
+      if (flow.frames.length > 1) {
+        setAuditProgress("플로우 연결성 검수 중...");
+        const flowPrompt = flow.frames.map((f, i) => `화면${i + 1}: ${f.name}`).join(", ");
+        const flowRes = await runAIAudit(`${flow.name} 플로우 (${flowPrompt})`, {
+          mode: "image",
+          image: flow.frames[0].image,
+          serviceType: "brand",
+        });
+
+        if (!flowRes.error) {
+          // 플로우 관련 이슈만 추출 (SF_, UXC_FL_ 등)
+          (flowRes.issues || []).forEach(iss => {
+            if (iss.id && (iss.id.startsWith("SF_") || iss.id.startsWith("UXC_FL") || iss.id.startsWith("UXC_CS"))) {
+              allFlowIssues.push({ ...iss, scope: "flow", frameName: null, frameIdx: null });
+            }
+          });
+        }
+      }
+
+      // 3. 결과 합산
+      const avgScore = flow.frames.length > 0 ? Math.round(totalScore / flow.frames.length) : 0;
+      const avgPolicy = flow.frames.length > 0 ? Math.round(totalPolicyScore / flow.frames.length) : 0;
+      const avgDs = flow.frames.length > 0 ? Math.round(totalDsScore / flow.frames.length) : 0;
+
+      const combinedResult = {
+        score: avgScore,
+        verdict: avgScore >= 70 ? "PASS" : "FAIL",
+        breakdown: { policy: avgPolicy, policyMax: 60, ds: avgDs, dsMax: 40, policyDetail: {} },
+        issues: [...allFlowIssues, ...allScreenIssues],
+        flowIssues: allFlowIssues,
+        screenIssues: allScreenIssues,
+        passes: allPasses,
+        frameNames: flow.frames.map(f => f.name),
+        skipped: [],
+        outOfScope: [],
+        scoredCount: allScreenIssues.length + allPasses.length,
+        skippedCount: 0,
+        outOfScopeCount: 0,
+        total: allScreenIssues.length + allFlowIssues.length + allPasses.length,
+        auditMode: "figma",
+        serviceType: "brand",
+        timestamp: new Date().toLocaleString("ko-KR"),
+        input: { type: "figma", screenName: flow.name, imagePreview: flow.frames[0]?.image, serviceType: "brand" },
+        id: Date.now(),
+      };
 
       setFlows(prev => prev.map(f => {
         if (f.id !== flow.id) return f;
         const newIters = [...f.iterations];
-        newIters[newIters.length - 1] = { ...newIters[newIters.length - 1], result: res, status: "done" };
+        newIters[newIters.length - 1] = { ...newIters[newIters.length - 1], result: combinedResult, status: "done" };
         return { ...f, iterations: newIters };
       }));
 
-      onAddResult(res);
+      onAddResult(combinedResult);
       setViewIter(null);
     } catch (err) {
       console.error("Audit error:", err);
     }
     setAuditRunning(false);
+    setAuditProgress("");
   };
 
   return (
@@ -2391,7 +2457,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
             <>
               <div style={{ width: 36, height: 36, border: "3px solid #E5E7EB", borderTopColor: BRAND, borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 12px" }} />
               <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E" }}>검수 진행 중...</div>
-              <div style={{ fontSize: 12, color: "#B45309", marginTop: 4 }}>{flow.frames.length}개 프레임을 분석하고 있습니다</div>
+              <div style={{ fontSize: 12, color: "#B45309", marginTop: 4 }}>{auditProgress || `${flow.frames.length}개 프레임을 분석하고 있습니다`}</div>
             </>
           ) : (
             <>
