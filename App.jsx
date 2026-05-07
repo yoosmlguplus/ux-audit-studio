@@ -2216,24 +2216,39 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
   const latestIter = flow.iterations[flow.iterations.length - 1];
   const prevIter = displayIterIdx > 0 ? flow.iterations[displayIterIdx - 1] : null;
 
-  const runMockAudit = () => {
+  const runRealAudit = async () => {
     setAuditRunning(true);
-    setTimeout(() => {
-      const result = generateMockResult(flow.name, flow.frames, flow.iterations.length);
-      result.input = { type: "figma", screenName: flow.name, imagePreview: flow.frames[0]?.image, serviceType: "brand" };
-      result.id = Date.now();
+    try {
+      const frame = flow.frames[0];
+      if (!frame) { setAuditRunning(false); return; }
+
+      const res = await runAIAudit(flow.name, {
+        mode: "image",
+        image: frame.image,
+        serviceType: "brand",
+      });
+
+      if (res.error) {
+        setAuditRunning(false);
+        return;
+      }
+
+      res.input = { type: "figma", screenName: flow.name, imagePreview: frame.image, serviceType: "brand" };
+      res.id = Date.now();
 
       setFlows(prev => prev.map(f => {
         if (f.id !== flow.id) return f;
         const newIters = [...f.iterations];
-        newIters[newIters.length - 1] = { ...newIters[newIters.length - 1], result, status: "done" };
+        newIters[newIters.length - 1] = { ...newIters[newIters.length - 1], result: res, status: "done" };
         return { ...f, iterations: newIters };
       }));
 
-      onAddResult(result);
-      setAuditRunning(false);
+      onAddResult(res);
       setViewIter(null);
-    }, 2000);
+    } catch (err) {
+      console.error("Audit error:", err);
+    }
+    setAuditRunning(false);
   };
 
   return (
@@ -2386,13 +2401,12 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                 {flow.iterations.length > 1 && ` (v${flow.iterations.length} 검수 회차)`}
               </div>
               <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14 }}>
-                <button onClick={runMockAudit} style={{
+                <button onClick={runRealAudit} style={{
                   padding: "10px 24px", borderRadius: 8, border: "none",
                   background: `linear-gradient(135deg, ${BRAND}, ${BRAND_HIGH})`, color: "#fff",
                   fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                }}>▶ 검수 시작 (Demo)</button>
+                }}>▶ AI 검수 시작</button>
               </div>
-              <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 10 }}>Demo 모드: 모의 검수 결과를 생성합니다. API 키 연결 시 실제 AI 검수로 전환됩니다.</div>
             </>
           )}
         </div>
