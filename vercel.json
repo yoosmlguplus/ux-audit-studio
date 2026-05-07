@@ -1,0 +1,9 @@
+{
+  "framework": "vite",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/figma-import", "destination": "/api/figma-import" },
+    { "source": "/api/audit", "destination": "/api/audit" }
+  ]
+}
