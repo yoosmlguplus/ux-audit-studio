@@ -2399,182 +2399,121 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
     setAuditProgress("");
   };
 
+  const svcLabel = { brand: "브랜드 서비스 검수", linked: "연계 서비스 검수", usability: "외부 서비스 검증" }[serviceType] || "서비스 검수";
+  const svcDesc = { brand: "UX Policy + Checklist + Design system 전체 적용", linked: "UX Policy + Checklist만 적용 · DS Rules 채점 제외", usability: "UX Policy + Checklist + 통상적·학술적 UX 룰 적용" }[serviceType] || "";
+
   return (
-    <div style={{ padding: "36px 44px", maxWidth: 1200, overflowY: "auto" }}>
-      {/* Flow Selector (여러 플로우 있을 때) */}
-      {flows.length > 1 && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 4 }}>
-          {flows.map(f => (
-            <button key={f.id} onClick={() => { setActiveFlowId(f.id); setViewIter(null); setSelectedFrame(null); }} style={{
-              padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${f.id === flow.id ? BRAND : BORDER}`,
-              background: f.id === flow.id ? BRAND_LOW : SURFACE, fontSize: 11, fontWeight: f.id === flow.id ? 600 : 400,
-              color: f.id === flow.id ? BRAND_HIGH : TEXT2, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-            }}>{f.name} ({f.frames.length})</button>
+    <div style={{ padding: "45px 0 45px 72px", maxWidth: 1288, overflowY: "auto", fontFamily: "'Pretendard',system-ui,sans-serif" }}>
+      {/* Header */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: "#000", margin: 0, lineHeight: 1.3, letterSpacing: "-0.02em" }}>{svcLabel}</h1>
+        <p style={{ color: "#747474", margin: 0, fontSize: 16, fontWeight: 500, lineHeight: 1.5 }}>{svcDesc}</p>
+      </div>
+
+      {/* 상단 카드 (하나의 박스) */}
+      <div style={{ background: "#FCFCFC", borderRadius: 12, boxShadow: "0px 4px 24px rgba(0,0,0,0.02)", padding: "22px 0 28px", display: "flex", flexDirection: "column", gap: 48, marginBottom: 12 }}>
+
+        {/* 입력 탭 바 (비활성, flow 선택 상태) */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "0 24px" }}>
+          {["Figma 링크", "Figma 플로우", "이미지 업로드", "URL 입력", "JSON Schema"].map((label, i) => (
+            <button key={i} style={{
+              padding: "12px 16px", borderRadius: 4, border: "none",
+              background: i === 1 ? "#F2F2F2" : "transparent",
+              color: i === 1 ? "#1A1A1A" : "#747474",
+              fontSize: 14, fontWeight: 700, cursor: "default", fontFamily: "inherit",
+            }}>{label}</button>
           ))}
         </div>
-      )}
 
-      {/* Flow Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: TEXT1, margin: 0 }}>{flow.name}</h1>
-            <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: BRAND_LOW, color: BRAND, fontWeight: 600 }}>v{flow.iterations.length}</span>
-            <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 8, background: "#EDE9FE", color: "#7C3AED", fontWeight: 600 }}>Figma</span>
-          </div>
-          <p style={{ color: TEXT3, margin: 0, fontSize: 13 }}>{flow.frames.length}개 화면 · {flow.iterations.length}회 검수 회차 · {flow.timestamp}</p>
-        </div>
-      </div>
-
-      {/* Iteration Timeline (최상단) */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: TEXT3, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.5px" }}>검수 회차</div>
-        <div style={{ display: "flex", gap: 0, alignItems: "center" }}>
-          {flow.iterations.map((iter, i) => {
-            const isActive = i === displayIterIdx;
-            const isPASS = iter.result?.verdict === "PASS";
-            const hasResult = !!iter.result;
-            const borderColor = isActive ? (hasResult ? (isPASS ? "#059669" : "#DC2626") : BRAND) : "transparent";
-            return (
-              <div key={i} style={{ display: "flex", alignItems: "center" }}>
-                <button onClick={() => { setViewIter(i); setSelectedFrame(null); }} style={{
-                  width: 64, height: 64, borderRadius: "50%",
-                  border: `2.5px solid ${borderColor}`,
-                  background: "#fff", boxShadow: isActive ? `0 2px 10px ${borderColor}30` : "0 1px 4px rgba(0,0,0,0.06)",
-                  cursor: "pointer", fontFamily: "inherit", transition: "all .15s",
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  padding: 0,
-                }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: isActive ? TEXT1 : TEXT3 }}>v{i + 1}</div>
-                  {hasResult ? (
-                    <div style={{ fontSize: 17, fontWeight: 700, color: isPASS ? "#059669" : "#DC2626", lineHeight: 1 }}>{iter.result.score}</div>
-                  ) : (
-                    <div style={{ fontSize: 9, color: "#D97706", marginTop: 1 }}>대기</div>
-                  )}
-                </button>
-                {i < flow.iterations.length - 1 && (
-                  <div style={{ width: 20, height: 2, background: BORDER, flexShrink: 0 }} />
-                )}
+        {/* 콘텐츠: 프레임 그리드 + 하단 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 80 }}>
+          {/* 프레임 영역 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24, padding: "0 24px" }}>
+            {/* 플로우명 + 화면 수 + 회차 드롭다운 */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 4px" }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "#474747" }}>{flow.name}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#747474" }}>{flow.frames.length}개 화면</span>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Comparison */}
-      {prevIter && prevIter.result && displayIter.result && (
-        <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, background: SURFACE, border: `1px solid ${BORDER}` }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: TEXT1, marginBottom: 10 }}>v{displayIterIdx} → v{displayIterIdx + 1} 변화</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-            {(() => {
-              const prev = prevIter.result;
-              const curr = displayIter.result;
-              const scoreDiff = curr.score - prev.score;
-              const prevIds = new Set(prev.issues.map(x => x.id));
-              const currIds = new Set(curr.issues.map(x => x.id));
-              const resolved = prev.issues.filter(x => !currIds.has(x.id)).length;
-              const newIssues = curr.issues.filter(x => !prevIds.has(x.id)).length;
-              const remaining = curr.issues.filter(x => prevIds.has(x.id)).length;
-              return (
-                <>
-                  <div style={{ padding: "10px", borderRadius: 8, background: scoreDiff >= 0 ? "#F0FDF4" : "#FFF5F5", textAlign: "center" }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: scoreDiff >= 0 ? "#059669" : "#DC2626" }}>{scoreDiff >= 0 ? "+" : ""}{scoreDiff}</div>
-                    <div style={{ fontSize: 9, color: TEXT3, marginTop: 2 }}>점수</div>
-                  </div>
-                  <div style={{ padding: "10px", borderRadius: 8, background: "#ECFDF5", textAlign: "center" }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "#059669" }}>{resolved}</div>
-                    <div style={{ fontSize: 9, color: TEXT3, marginTop: 2 }}>해결</div>
-                  </div>
-                  <div style={{ padding: "10px", borderRadius: 8, background: newIssues > 0 ? "#FEF2F2" : "#F3F4F6", textAlign: "center" }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: newIssues > 0 ? "#DC2626" : "#6B7280" }}>{newIssues}</div>
-                    <div style={{ fontSize: 9, color: TEXT3, marginTop: 2 }}>신규</div>
-                  </div>
-                  <div style={{ padding: "10px", borderRadius: 8, background: "#F3F4F6", textAlign: "center" }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "#6B7280" }}>{remaining}</div>
-                    <div style={{ fontSize: 9, color: TEXT3, marginTop: 2 }}>잔존</div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* Frame Strip (이슈 카운트 포함) */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: TEXT3, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>플로우 화면</div>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
-          {flow.frames.map((frame, i) => {
-            const isSelected = selectedFrame === i;
-            const frameIssueCount = displayIter.result?.screenIssues?.filter(x => x.frameIdx === i).length || 0;
-            return (
-              <div key={frame.id} onClick={() => setSelectedFrame(isSelected ? null : i)} style={{
-                flexShrink: 0, width: 110, background: SURFACE, border: `2px solid ${isSelected ? BRAND : BORDER}`,
-                borderRadius: 10, overflow: "hidden", cursor: "pointer", transition: "all .15s",
-                boxShadow: isSelected ? `0 2px 12px ${BRAND}30` : "none",
+              <select value={displayIterIdx} onChange={e => { setViewIter(Number(e.target.value)); setSelectedFrame(null); }} style={{
+                padding: "10px 12px", borderRadius: 4, border: "none", background: "#F2F2F2",
+                fontSize: 14, fontWeight: 500, color: "#1A1A1A", fontFamily: "inherit",
+                cursor: "pointer", outline: "none",
               }}>
-                <div style={{ position: "relative", height: 140, background: "#F9F9F9" }}>
-                  <img src={frame.image} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt={frame.name} />
-                  <div style={{ position: "absolute", top: 4, left: 4, width: 20, height: 20, borderRadius: "50%", background: isSelected ? BRAND : "rgba(0,0,0,0.5)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700 }}>{i + 1}</div>
-                  {frameIssueCount > 0 && (
-                    <div style={{ position: "absolute", top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, background: "#DC2626", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, padding: "0 4px" }}>{frameIssueCount}</div>
-                  )}
-                  {displayIter.result && frameIssueCount === 0 && (
-                    <div style={{ position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: 9, background: "#059669", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>✓</div>
-                  )}
+                {flow.iterations.map((iter, i) => (
+                  <option key={i} value={i}>{i + 1}회차{iter.result ? ` (${iter.result.score}점)` : " (대기)"}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 프레임 그리드 (128×180) */}
+            <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+              {flow.frames.map((frame, i) => (
+                <div key={frame.id} onClick={() => setSelectedFrame(selectedFrame === i ? null : i)} style={{
+                  width: 128, height: 180, flexShrink: 0, borderRadius: 8,
+                  background: "#D9D9D9", border: `1px solid ${selectedFrame === i ? BRAND : "#E0E0E0"}`,
+                  display: "flex", flexDirection: "column", justifyContent: "flex-end",
+                  overflow: "hidden", cursor: "pointer", transition: "border-color .15s",
+                  boxShadow: selectedFrame === i ? `0 0 0 2px ${BRAND}40` : "none",
+                }}>
+                  <img src={frame.image} style={{ width: "100%", flex: 1, objectFit: "cover", display: "block" }} alt={frame.name} />
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "5px 8px", background: "#FCFCFC" }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: TEXT2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{frame.name}</span>
+                  </div>
                 </div>
-                <div style={{ padding: "5px 7px", fontSize: 9, fontWeight: 500, color: isSelected ? BRAND : TEXT2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" }}>{frame.name}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* 하단: 검수 시작 / 진행 중 / 결과 요약 */}
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", padding: "0 24px" }}>
+            {displayIter.result ? (
+              <div onClick={() => setShowResultPopup(true)} style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "12px 8px 12px 18px", borderRadius: 8, background: "#FDF1F1",
+                cursor: "pointer", flex: 1, transition: "background .15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#FCE8E8"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#FDF1F1"; }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ position: "relative", width: 60, height: 60, flexShrink: 0 }}>
+                    <svg viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
+                      <circle cx="50" cy="50" r="42" fill="none" stroke="#E5E7EB" strokeWidth="6" />
+                      <circle cx="50" cy="50" r="42" fill="none" stroke={displayIter.result.verdict === "PASS" ? "#059669" : "#DC2626"} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${displayIter.result.score * 2.64} 264`} />
+                    </svg>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: TEXT1 }}>{displayIter.result.score}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: TEXT1 }}>{displayIter.result.verdict} · 이슈 {displayIter.result.issues.length}건</span>
+                    <span style={{ fontSize: 12, color: TEXT3 }}>{displayIter.result.timestamp}</span>
+                  </div>
+                </div>
+                <div style={{ width: 52, height: 52, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 6L15 12L9 18" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
               </div>
-            );
-          })}
+            ) : auditRunning ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 24px", borderRadius: 8, background: "#FFFBEB" }}>
+                <div style={{ width: 24, height: 24, border: "2.5px solid #E5E7EB", borderTopColor: BRAND, borderRadius: "50%", animation: "spin .8s linear infinite" }} />
+                <span style={{ fontSize: 14, fontWeight: 500, color: "#92400E" }}>{auditProgress || "검수 진행 중..."}</span>
+              </div>
+            ) : (
+              <button onClick={runRealAudit} style={{
+                display: "flex", alignItems: "center", gap: 4,
+                padding: "14px 20px", borderRadius: 4, border: "none",
+                background: "#E10975", color: "#fff",
+                fontSize: 16, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 5.14v13.72a1 1 0 001.5.86l11.04-6.86a1 1 0 000-1.72L9.5 4.28a1 1 0 00-1.5.86z" fill="#fff"/></svg>
+                검수 시작
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Result or Pending */}
-      {displayIter.result ? (
-        <button onClick={() => setShowResultPopup(true)} style={{
-          width: "100%", padding: "16px 20px", borderRadius: 12, border: `1px solid ${BORDER}`,
-          background: SURFACE, cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-          display: "flex", alignItems: "center", gap: 16, transition: "all .15s",
-        }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = BRAND; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; }}
-        >
-          <div style={{ width: 48, height: 48, borderRadius: "50%", border: `2.5px solid ${displayIter.result.verdict === "PASS" ? "#059669" : "#DC2626"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: displayIter.result.verdict === "PASS" ? "#059669" : "#DC2626" }}>{displayIter.result.score}</span>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: TEXT1 }}>v{displayIterIdx + 1} 검수 결과 보기</div>
-            <div style={{ fontSize: 12, color: TEXT3, marginTop: 2 }}>이슈 {displayIter.result.issues.length}건 · {displayIter.result.timestamp}</div>
-          </div>
-          <span style={{ fontSize: 14, color: TEXT3 }}>→</span>
-        </button>
-      ) : (
-        <div style={{ padding: 28, borderRadius: 12, background: "#FFFBEB", border: "1px solid #FDE68A", textAlign: "center" }}>
-          {auditRunning ? (
-            <>
-              <div style={{ width: 36, height: 36, border: "3px solid #E5E7EB", borderTopColor: BRAND, borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 12px" }} />
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E" }}>검수 진행 중...</div>
-              <div style={{ fontSize: 12, color: "#B45309", marginTop: 4 }}>{auditProgress || `${flow.frames.length}개 프레임을 분석하고 있습니다`}</div>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E", marginBottom: 4 }}>검수 대기 중</div>
-              <div style={{ fontSize: 12, color: "#B45309", marginBottom: 4 }}>
-                {flow.frames.length}개 프레임이 수신되었습니다.
-                {flow.iterations.length > 1 && ` (v${flow.iterations.length} 검수 회차)`}
-              </div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14 }}>
-                <button onClick={runRealAudit} style={{
-                  padding: "10px 24px", borderRadius: 8, border: "none",
-                  background: `linear-gradient(135deg, ${BRAND}, ${BRAND_HIGH})`, color: "#fff",
-                  fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                }}>▶ AI 검수 시작</button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
 
       {/* Flow Result Popup */}
       {showResultPopup && displayIter.result && (() => {
