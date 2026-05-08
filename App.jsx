@@ -2293,6 +2293,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
   const prevIter = displayIterIdx > 0 ? flow.iterations[displayIterIdx - 1] : null;
 
   const [auditProgress, setAuditProgress] = useState("");
+  const [showResultPopup, setShowResultPopup] = useState(false);
 
   const runRealAudit = async () => {
     setAuditRunning(true);
@@ -2531,7 +2532,23 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
 
       {/* Result or Pending */}
       {displayIter.result ? (
-        <ResultSection result={displayIter.result} iterIdx={displayIterIdx} frames={flow.frames} selectedFrame={selectedFrame} setSelectedFrame={setSelectedFrame} />
+        <button onClick={() => setShowResultPopup(true)} style={{
+          width: "100%", padding: "16px 20px", borderRadius: 12, border: `1px solid ${BORDER}`,
+          background: SURFACE, cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+          display: "flex", alignItems: "center", gap: 16, transition: "all .15s",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = BRAND; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; }}
+        >
+          <div style={{ width: 48, height: 48, borderRadius: "50%", border: `2.5px solid ${displayIter.result.verdict === "PASS" ? "#059669" : "#DC2626"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: displayIter.result.verdict === "PASS" ? "#059669" : "#DC2626" }}>{displayIter.result.score}</span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: TEXT1 }}>v{displayIterIdx + 1} 검수 결과 보기</div>
+            <div style={{ fontSize: 12, color: TEXT3, marginTop: 2 }}>이슈 {displayIter.result.issues.length}건 · {displayIter.result.timestamp}</div>
+          </div>
+          <span style={{ fontSize: 14, color: TEXT3 }}>→</span>
+        </button>
       ) : (
         <div style={{ padding: 28, borderRadius: 12, background: "#FFFBEB", border: "1px solid #FDE68A", textAlign: "center" }}>
           {auditRunning ? (
@@ -2558,6 +2575,162 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
           )}
         </div>
       )}
+
+      {/* Flow Result Popup */}
+      {showResultPopup && displayIter.result && (() => {
+        const r = displayIter.result;
+        const isPASS = r.verdict === "PASS";
+        const issues = selectedFrame === null ? r.issues : r.issues.filter(x => x.frameIdx === selectedFrame);
+        const flowIss = issues.filter(x => x.scope === "flow");
+        const screenIss = issues.filter(x => x.scope !== "flow");
+        const catColors = { "UX Policy": { c: "#0891B2", bg: "#ECFEFF" }, "UX Checklist": { c: "#7C3AED", bg: "#F5F3FF" }, "UI Checklist": { c: "#D97706", bg: "#FFFBEB" }, "DS": { c: "#6B7280", bg: "#F3F4F6" } };
+        const frameIdx = selectedFrame ?? 0;
+        const frame = flow.frames[frameIdx];
+
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div onClick={() => setShowResultPopup(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+            <div style={{ position: "relative", width: "92%", maxWidth: 1200, height: "90vh", background: SURFACE, borderRadius: 16, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.2)" }}>
+              {/* Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: TEXT1 }}>{flow.name}</span>
+                  <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: BRAND_LOW, color: BRAND, fontWeight: 600 }}>v{displayIterIdx + 1}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 20, background: isPASS ? "#ECFDF5" : "#FEF2F2", color: isPASS ? "#059669" : "#DC2626" }}>{r.verdict}</span>
+                  {r.serviceType && <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 12, background: r.serviceType==="brand"?BRAND_LOW:r.serviceType==="linked"?"#F5F3FF":"#ECFDF5", color: r.serviceType==="brand"?BRAND:r.serviceType==="linked"?"#7C3AED":"#059669", fontWeight: 600 }}>{r.serviceType==="brand"?"브랜드":r.serviceType==="linked"?"연계":"사용성"}</span>}
+                </div>
+                <button onClick={() => setShowResultPopup(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${BORDER}`, background: SURFACE, cursor: "pointer", fontSize: 16, color: TEXT3, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>✕</button>
+              </div>
+
+              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                {/* LEFT */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", borderRight: `1px solid ${BORDER}` }}>
+                  {/* Score */}
+                  <div style={{ display: "flex", gap: 20, alignItems: "center", marginBottom: 16, padding: 16, borderRadius: 12, background: isPASS ? "#F0FDF4" : "#FFF5F5", border: `1px solid ${isPASS ? "#BBF7D0" : "#FECACA"}` }}>
+                    <div style={{ position: "relative", width: 72, height: 72, flexShrink: 0 }}>
+                      <svg viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
+                        <circle cx="50" cy="50" r="42" fill="none" stroke={BORDER} strokeWidth="7" />
+                        <circle cx="50" cy="50" r="42" fill="none" stroke={isPASS ? "#059669" : "#DC2626"} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${r.score * 2.64} 264`} />
+                      </svg>
+                      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 22, fontWeight: 700, color: TEXT1 }}>{r.score}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: isPASS ? "#059669" : "#DC2626", marginBottom: 4 }}>{isPASS ? "PASS" : "FAIL"}</div>
+                      <div style={{ display: "flex", gap: 14, fontSize: 12 }}>
+                        <span style={{ color: "#0891B2" }}>Policy <b>{r.breakdown.policy}</b>/{r.breakdown.policyMax}</span>
+                        {r.breakdown.dsMax > 0 && <span style={{ color: "#6B7280" }}>DS <b>{r.breakdown.ds}</b>/{r.breakdown.dsMax}</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Frame Tabs */}
+                  <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", flexWrap: "wrap" }}>
+                    <button onClick={() => setSelectedFrame(null)} style={{
+                      padding: "5px 12px", borderRadius: 6, border: `1.5px solid ${selectedFrame === null ? BRAND : BORDER}`,
+                      background: selectedFrame === null ? BRAND_LOW : "transparent", color: selectedFrame === null ? BRAND_HIGH : TEXT2,
+                      fontSize: 11, fontWeight: selectedFrame === null ? 600 : 400, cursor: "pointer", fontFamily: "inherit",
+                    }}>전체 ({r.issues.length})</button>
+                    {flow.frames.map((fr, fi) => {
+                      const cnt = r.issues.filter(x => x.frameIdx === fi).length;
+                      return (
+                        <button key={fi} onClick={() => setSelectedFrame(fi)} style={{
+                          padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${selectedFrame === fi ? BRAND : BORDER}`,
+                          background: selectedFrame === fi ? BRAND_LOW : "transparent", color: selectedFrame === fi ? BRAND_HIGH : TEXT2,
+                          fontSize: 10, fontWeight: selectedFrame === fi ? 600 : 400, cursor: "pointer", fontFamily: "inherit",
+                          whiteSpace: "nowrap",
+                        }}>{fr.name} {cnt > 0 ? `(${cnt})` : "✓"}</button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Iteration Dots */}
+                  {flow.iterations.filter(it => it.result).length > 1 && (
+                    <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+                      {flow.iterations.map((iter, i) => {
+                        if (!iter.result) return null;
+                        const isAct = i === displayIterIdx;
+                        return (
+                          <button key={i} onClick={() => setViewIter(i)} style={{
+                            width: 36, height: 36, borderRadius: "50%",
+                            border: `2px solid ${isAct ? (iter.result.verdict === "PASS" ? "#059669" : "#DC2626") : "transparent"}`,
+                            background: "#fff", boxShadow: isAct ? "0 2px 8px rgba(0,0,0,0.1)" : "0 1px 3px rgba(0,0,0,0.06)",
+                            cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 0,
+                          }}>
+                            <span style={{ fontSize: 7, fontWeight: 600, color: TEXT3 }}>v{i + 1}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: iter.result.verdict === "PASS" ? "#059669" : "#DC2626", lineHeight: 1 }}>{iter.result.score}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Flow Issues */}
+                  {flowIss.length > 0 && selectedFrame === null && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED", marginBottom: 6 }}>플로우 이슈 ({flowIss.length})</div>
+                      {flowIss.map((iss, i) => (
+                        <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: "#F5F3FF", border: "1px solid #DDD6FE", borderLeft: "3px solid #7C3AED", marginBottom: 4 }}>
+                          <div style={{ fontSize: 12, color: TEXT1, fontWeight: 500 }}>{iss.msg}</div>
+                          {iss.fix && <div style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>→ {iss.fix}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Screen Issues */}
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#DC2626", marginBottom: 6 }}>
+                    {selectedFrame === null ? `화면 이슈 (${screenIss.length})` : `${flow.frames[selectedFrame]?.name} (${screenIss.length})`}
+                  </div>
+                  {screenIss.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#059669", fontSize: 12, background: "#F0FDF4", borderRadius: 8 }}>이슈 없음</div>}
+                  {screenIss.map((iss, i) => {
+                    const sc = catColors[iss.category] || catColors.DS;
+                    return (
+                      <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: "#fff", border: `1px solid ${BORDER}`, borderLeft: `3px solid ${sc.c}`, marginBottom: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 4, background: sc.bg, color: sc.c }}>{iss.category}</span>
+                          {iss.frameName && selectedFrame === null && <span style={{ fontSize: 9, color: TEXT3 }}>{iss.frameName}</span>}
+                        </div>
+                        <div style={{ fontSize: 12, color: TEXT1, fontWeight: 500 }}>{iss.msg}</div>
+                        {iss.fix && <div style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>→ {iss.fix}</div>}
+                      </div>
+                    );
+                  })}
+
+                  {/* Expert Opinions */}
+                  {r.expertOpinions && r.expertOpinions.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#2563EB", marginBottom: 6 }}>UX 전문가 의견</div>
+                      {r.expertOpinions.map((op, i) => {
+                        const tc = op.type === "positive" ? "#059669" : op.type === "issue" ? "#DC2626" : "#2563EB";
+                        return (
+                          <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: "#EFF6FF", border: "1px solid #BFDBFE", borderLeft: `3px solid ${tc}`, marginBottom: 4 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: tc, color: "#fff" }}>{op.type === "positive" ? "긍정" : op.type === "issue" ? "이슈" : "제안"}</span>
+                              <span style={{ fontSize: 10, color: tc, fontWeight: 600 }}>{op.principle}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: TEXT1, fontWeight: 500, lineHeight: 1.5 }}>{op.comment}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* RIGHT: Image */}
+                <div style={{ width: 420, flexShrink: 0, overflowY: "auto", padding: 20, background: "#F5F5F5", display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
+                  {frame?.image ? (
+                    <img src={frame.image} style={{ width: "100%", borderRadius: 8, boxShadow: "0 2px 16px rgba(0,0,0,0.08)" }} alt={frame.name} />
+                  ) : (
+                    <div style={{ padding: 40, textAlign: "center", color: TEXT3 }}>이미지 없음</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
