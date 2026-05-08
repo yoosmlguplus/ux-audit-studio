@@ -2476,19 +2476,21 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
               onMouseEnter={e => { e.currentTarget.style.background = "#FCE8E8"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "#FDF1F1"; }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                  {/* 점수 원형 (60×60, 흰 배경 + 그림자 + stroke) */}
                   <div style={{ position: "relative", width: 60, height: 60, flexShrink: 0 }}>
-                    <svg viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
-                      <circle cx="50" cy="50" r="42" fill="none" stroke="#E5E7EB" strokeWidth="6" />
-                      <circle cx="50" cy="50" r="42" fill="none" stroke={displayIter.result.verdict === "PASS" ? "#059669" : "#DC2626"} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${displayIter.result.score * 2.64} 264`} />
+                    <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#fff", boxShadow: "0px 0.94px 7.5px rgba(229,26,26,0.1)" }} />
+                    <svg viewBox="0 0 60 60" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+                      <circle cx="30" cy="30" r="28.125" fill="none" stroke="rgba(26,26,26,0.16)" strokeWidth="3.75" />
+                      <circle cx="30" cy="30" r="28.125" fill="none" stroke={displayIter.result.verdict === "PASS" ? "#059669" : "#FF0000"} strokeWidth="3.75" strokeLinecap="round" strokeDasharray={`${displayIter.result.score * 1.767} 176.7`} />
                     </svg>
                     <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: TEXT1 }}>{displayIter.result.score}</span>
+                      <span style={{ fontSize: 22.5, fontWeight: 700, color: displayIter.result.verdict === "PASS" ? "#059669" : "#DA0707", letterSpacing: "-0.04em" }}>{displayIter.result.score}</span>
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: TEXT1 }}>{displayIter.result.verdict} · 이슈 {displayIter.result.issues.length}건</span>
-                    <span style={{ fontSize: 12, color: TEXT3 }}>{displayIter.result.timestamp}</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#474747" }}>{displayIterIdx + 1}회차 검수 결과</span>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: displayIter.result.verdict === "PASS" ? "#059669" : "#DA0707", lineHeight: 1.3, letterSpacing: "-0.02em" }}>{displayIter.result.verdict} · 이슈 {displayIter.result.issues.length}건</span>
                   </div>
                 </div>
                 <div style={{ width: 52, height: 52, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
