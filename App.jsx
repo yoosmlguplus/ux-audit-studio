@@ -2447,8 +2447,8 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                     <option key={i} value={i}>{i + 1}회차{iter.result ? ` (${iter.result.score}점)` : " (대기)"}</option>
                   ))}
                 </select>
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
-                  <path d="M5 7.5L10 12.5L15 7.5" stroke="#1A1A1A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                  <path d="M11.8047 6.19527C12.0651 6.45562 12.0651 6.87764 11.8047 7.138L8.47136 10.4714C8.21101 10.7318 7.78899 10.7318 7.52864 10.4714L4.19526 7.13799C3.93491 6.87764 3.93491 6.45562 4.19526 6.19527C4.45562 5.93491 4.87763 5.93491 5.13798 6.19527L8 9.05731L10.862 6.19527C11.1224 5.93491 11.5444 5.93491 11.8047 6.19527Z" fill="#1A1A1A" />
                 </svg>
               </div>
             </div>
