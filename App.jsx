@@ -904,11 +904,57 @@ function buildAllPolicyItems() {
   ];
 }
 
+function buildUDSSpec() {
+  var colors = [];
+  Object.keys(UDS_COLORS).forEach(function(group) {
+    UDS_COLORS[group].forEach(function(c) { colors.push(c.hex); });
+  });
+  var uniqueColors = colors.filter(function(v, i, a) { return a.indexOf(v) === i; });
+
+  var typoSpec = UDS_TYPOGRAPHY.map(function(t) {
+    return t.token + ": " + t.size + "px/w" + t.weight;
+  }).join(", ");
+
+  var spacingSpec = UDS_SPACING.layout.map(function(s) {
+    return s.token + "=" + s.value;
+  }).join(", ");
+
+  var radiusSpec = UDS_SPACING.radius.map(function(r) {
+    return r.token + "=" + r.value;
+  }).join(", ");
+
+  return "\n\n## UDS DESIGN SYSTEM SPEC (비교 기준)\n" +
+    "Font: Pretendard ONLY. 다른 폰트 사용 시 fail.\n" +
+    "허용 폰트 사이즈: " + UDS_TYPOGRAPHY.map(function(t){return t.size+"px";}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(", ") + ". 이 외 사이즈 → fail.\n" +
+    "타이포 토큰: " + typoSpec + "\n" +
+    "허용 컬러 (HEX): " + uniqueColors.join(", ") + ". 이 팔레트에 없는 컬러 사용 시 → fail.\n" +
+    "레이아웃: " + spacingSpec + "\n" +
+    "Radius: " + radiusSpec + "\n" +
+    "프레임: 최상위 프레임 402px 너비, minHeight 874.\n" +
+    "컴포넌트: UDS 라이브러리 컴포넌트 사용 필수. 커스텀 조립 금지.\n";
+}
+
 function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx) {
   var pList = allItems.map(function(r){return r.id+"|"+r.msg+"|ctx:"+r.ctx;}).join("\n");
   var dList = dsRules.map(function(r){return r.id+"|"+r.rule;}).join("\n");
 
-  var ctxGuide = "\n\n## CONTEXT-AWARE FILTERING (CRITICAL)\nEach checklist item has a ctx tag. FIRST identify the screen type, THEN apply only matching items.\n\nScreen type → ctx mapping:\n- Homepage/Dashboard/Info display → all, info, list\n- Product list/Search results → all, list, info\n- Form/Input/Registration → all, form, flow\n- Error/Empty/Failure page → all, error\n- Multi-step flow screen → all, flow, form\n- Settings/Config screen → all, form\n- Detail/Content page → all, info\n\nctx meanings:\n- 'all': applies to every screen\n- 'form': only if screen has input fields, selections, or form elements\n- 'flow': only if screen is part of a multi-step journey\n- 'error': only if screen shows error, empty, failure, or exception states\n- 'list': only if screen displays lists, grids, or collections of items\n- 'info': only if screen displays informational content\n- 'dynamic': only in Figma/URL/Prototype mode (skip in image mode)\n\nIf an item's ctx does NOT match the screen type → mark as 'o' (out of scope, not scored).\nDo NOT force-fail items that are simply not relevant to this screen's purpose.";
+  var udsSpec = buildUDSSpec();
+
+  var ctxGuide = "\n\n## CONTEXT-AWARE FILTERING\nEach checklist item has a ctx tag. FIRST identify the screen type, THEN apply only matching items.\n\nScreen type → ctx mapping:\n- Homepage/Dashboard/Info display → all, info, list\n- Product list/Search results → all, list, info\n- Form/Input/Registration → all, form, flow\n- Error/Empty/Failure page → all, error\n- Multi-step flow screen → all, flow, form\n- Settings/Config screen → all, form\n- Detail/Content page → all, info\n\nctx meanings:\n- 'all': applies to every screen\n- 'form': only if screen has input fields, selections, or form elements\n- 'flow': only if screen is part of a multi-step journey\n- 'error': only if screen shows error, empty, failure, or exception states\n- 'list': only if screen displays lists, grids, or collections of items\n- 'info': only if screen displays informational content\n- 'dynamic': only in Figma/URL/Prototype mode (skip in image mode)\n\nIf an item's ctx does NOT match the screen type → mark as 'o' (out of scope, not scored).\nDo NOT force-fail items that are simply not relevant to this screen's purpose.";
+
+  var strictGuide = "\n\n## STRICT AUDIT RULES (CRITICAL)\n" +
+    "You are a STRICT auditor. Default assumption: FAIL unless clearly compliant.\n" +
+    "- DS Rules: Compare EVERY visible element against the UDS spec above.\n" +
+    "  - If ANY color appears that is NOT in the allowed palette → DS_001 fail.\n" +
+    "  - If ANY text size does not match allowed sizes → DS_002 fail.\n" +
+    "  - If margins/padding visually deviate from spec → DS_006, DS_007 fail.\n" +
+    "  - If non-standard components are used (custom buttons, inputs) → DS_010 fail.\n" +
+    "- UX Rules: Evaluate based on visible content and structure.\n" +
+    "  - If CTA text is generic ('확인', '다음') → SF_LW_01 fail.\n" +
+    "  - If information hierarchy is unclear → MS_EU_02 fail.\n" +
+    "  - If too many actions compete on screen → MS_FA_01 fail.\n" +
+    "- Be specific in reason. Not '준수함' but what exactly you observed.\n" +
+    "- A typical screen should have 5-15 fail items. If you have fewer than 3 fails, re-examine more strictly.\n";
 
   var modeBlock = "";
   if (mode === "figma") {
@@ -918,14 +964,14 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx) {
   } else if (mode === "url") {
     modeBlock = "Mode: LIVE URL. Use web_search to analyze page.\n- Every in-scope item MUST be p or f.\nURL: "+(extraCtx||"");
   } else {
-    modeBlock = "Mode: STATIC IMAGE.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' → always 'o' in image mode.\n- Items whose ctx doesn't match screen type → 'o'.\n- Remaining items: judge strictly p or f based on what you SEE.";
+    modeBlock = "Mode: STATIC IMAGE — STRICT VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' → always 'o' in image mode.\n- Items whose ctx doesn't match screen type → 'o'.\n- For DS Rules: compare ALL visible colors, font sizes, spacings, components against the UDS spec.\n- If you cannot confirm compliance from the image, mark as FAIL (not pass).\n- Be strict: uncertain = fail.";
   }
 
   var dsBlock = mode === "prototype" ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
-  var verdictHelp = "Verdicts: p(pass), f(fail), o(out of scope/context mismatch). Reason Korean max 15 chars.";
+  var verdictHelp = "Verdicts: p(pass), f(fail), o(out of scope/context mismatch). Reason: Korean, specific observation, max 20 chars.";
   var scopeFields = mode === "prototype" ? ",\"sc\":0,\"fl\":\"\",\"bd\":\"\"" : "";
 
-  return "You are a UX/UI audit engine.\nScreen: "+screenName+"\n\n"+modeBlock+ctxGuide+"\n\n"+verdictHelp+"\n\nPolicy("+allItems.length+"):\n"+pList+dsBlock+"\n\nONLY valid JSON:\n{\"a\":{\"p\":\"목적\",\"u\":\"사용자\",\"f\":[\"기능\"],\"t\":\"유형\",\"st\":\"screen_type\""+scopeFields+"},\"r\":[{\"id\":\"ID\",\"v\":\"p\",\"m\":\"근거\"}]}";
+  return "You are a STRICT UX/UI audit engine. You must find real issues.\nScreen: "+screenName+"\n\n"+modeBlock+udsSpec+strictGuide+ctxGuide+"\n\n"+verdictHelp+"\n\nPolicy("+allItems.length+"):\n"+pList+dsBlock+"\n\nONLY valid JSON:\n{\"a\":{\"p\":\"목적\",\"u\":\"사용자\",\"f\":[\"기능\"],\"t\":\"유형\",\"st\":\"screen_type\""+scopeFields+"},\"r\":[{\"id\":\"ID\",\"v\":\"p\",\"m\":\"근거\"}]}";
 }
 
 function scoreFromAIResults(aiResults, mode, serviceType) {
