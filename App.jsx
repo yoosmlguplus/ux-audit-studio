@@ -964,7 +964,7 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx) {
   } else if (mode === "url") {
     modeBlock = "Mode: LIVE URL. Use web_search to analyze page.\n- Every in-scope item MUST be p or f.\nURL: "+(extraCtx||"");
   } else {
-    modeBlock = "Mode: STATIC IMAGE — STRICT VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' → always 'o' in image mode.\n- Items whose ctx doesn't match screen type → 'o'.\n- For DS Rules: compare ALL visible colors, font sizes, spacings, components against the UDS spec.\n- If you cannot confirm compliance from the image, mark as FAIL (not pass).\n- Be strict: uncertain = fail.";
+    modeBlock = "Mode: STATIC IMAGE — RULE-BASED VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' (인터랙션, 상태전환, 애니메이션 등 이미지에서 판단 불가한 항목) → always 'o'.\n- Items whose ctx doesn't match screen type → 'o'.\n- For ALL other items: judge STRICTLY based on the rules and UDS spec provided.\n- DO NOT use your own judgment. Only compare against the explicit rules and spec values.\n- For DS Rules: compare EVERY visible color against the allowed hex palette. Compare EVERY text against allowed font sizes. Compare spacing against allowed values.\n- If a visual element does NOT match the spec → FAIL. Do not guess or assume compliance.\n- If you cannot measure precisely but the element looks visually different from spec → FAIL.\n- Do NOT give benefit of the doubt. Rule violation = fail.";
   }
 
   var dsBlock = mode === "prototype" ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
@@ -1010,10 +1010,13 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
       return;
     }
 
-    const v = (rawV === "skip" && isDynamic && !isProto) ? "fail" : rawV;
+    // dynamic 컨텍스트(인터랙션)는 이미지에서 판단 불가 → skip 유지
+    // 그 외 skip(응답 누락)은 fail 처리
+    const isDynamicItem = (item.ctx || "").split(",").some(c => c.trim() === "dynamic");
+    const v = (rawV === "skip" && isDynamicItem && !isDynamic) ? "skip" : (rawV === "skip") ? "fail" : rawV;
 
     if (v === "fail") {
-      policyLost += 1; // count fails, calculate deduction later based on in-scope count
+      policyLost += 1;
       if (policyBreakdown[item.source]) policyBreakdown[item.source].fail += 1;
       let pillarName, principleName;
       if (item.source === "UX Policy") {
@@ -1021,9 +1024,9 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
         const principle = pillar?.principles.find(pr => pr.id === item.principle);
         pillarName = pillar?.name; principleName = principle?.ko;
       }
-      issues.push({ id: item.id, msg: item.msg, fix: reason || (rawV==="skip" ? "동적 검수 미확인" : ""), stage: "Policy", status: "fail", category: item.source, severity: item.severity, deduction: 0, pillarName, principleName, cat: item.cat, aiReason: reason });
+      issues.push({ id: item.id, msg: item.msg, fix: reason || (rawV==="skip" ? "AI 응답 누락 — 검증 불가" : ""), stage: "Policy", status: "fail", category: item.source, severity: item.severity, deduction: 0, pillarName, principleName, cat: item.cat, aiReason: reason });
     } else if (v === "skip") {
-      skipped.push({ id: item.id, msg: item.msg, category: item.source, reason: reason || "이미지에서 판단 불가" });
+      skipped.push({ id: item.id, msg: item.msg, category: item.source, reason: reason || "이미지에서 인터랙션 판단 불가" });
     } else {
       passes.push({ id: item.id, msg: item.msg, stage: "Policy", status: "pass", category: item.source, aiReason: reason });
     }
@@ -1035,14 +1038,13 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
       const ai = resultMap[item.id];
       const rawV = ai?.verdict || "skip";
       const reason = ai?.reason || "";
-      const v = (rawV === "skip" && isDynamic) ? "fail" : rawV;
+      // DS 규칙은 시각적 검수 가능 — skip은 fail 처리
+      const v = (rawV === "skip") ? "fail" : rawV;
 
       if (v === "fail") {
         const d = +dsPerRule.toFixed(1);
         dsLost += d;
-        issues.push({ id: item.id, msg: item.rule, fix: reason || (rawV==="skip" ? "동적 검수 미확인" : ""), stage: "DS", status: "fail", category: "DS", severity: item.severity, deduction: d, aiReason: reason });
-      } else if (v === "skip") {
-        skipped.push({ id: item.id, msg: item.rule, category: "DS", reason: reason || "이미지에서 판단 불가" });
+        issues.push({ id: item.id, msg: item.rule, fix: reason || (rawV==="skip" ? "AI 응답 누락 — 검증 불가" : ""), stage: "DS", status: "fail", category: "DS", severity: item.severity, deduction: d, aiReason: reason });
       } else {
         passes.push({ id: item.id, msg: item.rule, stage: "DS", status: "pass", category: "DS", aiReason: reason });
       }
@@ -1112,7 +1114,7 @@ async function runAIAudit(screenName, opts) {
   }
   messages[0].content.push({type:"text",text:prompt});
 
-  var apiBody = {model:"claude-sonnet-4-20250514",max_tokens:8000,temperature:0,messages:messages};
+  var apiBody = {model:"claude-sonnet-4-20250514",max_tokens:16000,temperature:0,messages:messages};
   if (mode==="figma"&&figmaUrl) { apiBody.mcp_servers=[{type:"url",url:"https://mcp.figma.com/mcp",name:"figma-mcp"}]; }
   if (mode==="url"||mode==="prototype") { apiBody.tools=[{type:"web_search_20250305",name:"web_search"}]; }
 
