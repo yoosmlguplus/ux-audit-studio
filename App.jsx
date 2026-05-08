@@ -2644,6 +2644,55 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                       })}
                     </div>
                   )}
+
+                  {/* 통과 항목 */}
+                  {(r.passes || []).length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#059669", marginBottom: 8, cursor: "pointer" }}>
+                        통과 ({r.passes.length})
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        {r.passes.map((p, i) => (
+                          <div key={i} style={{ padding: "5px 10px", borderRadius: 6, background: "#F0FDF4", fontSize: 12, color: "#065F46" }}>
+                            <span style={{ fontWeight: 700 }}>✓ </span>{p.msg}
+                            {p.aiReason && <span style={{ fontSize: 11, color: "#059669", marginLeft: 6 }}>({p.aiReason})</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 범위밖 항목 */}
+                  {(r.outOfScope || []).length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#6D28D9", marginBottom: 8 }}>
+                        범위밖 ({r.outOfScope.length})
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        {r.outOfScope.map((s, i) => (
+                          <div key={i} style={{ padding: "5px 10px", borderRadius: 6, background: "#F5F3FF", border: "1px dashed #DDD6FE", fontSize: 12, color: "#6D28D9" }}>
+                            ○ {s.msg}{s.reason && <span style={{ color: "#7C3AED", marginLeft: 4 }}>({s.reason})</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 판단불가 항목 */}
+                  {(r.skipped || []).length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#92400E", marginBottom: 8 }}>
+                        판단불가 ({r.skipped.length})
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        {r.skipped.map((s, i) => (
+                          <div key={i} style={{ padding: "5px 10px", borderRadius: 6, background: "#FFFBEB", border: "1px dashed #FDE68A", fontSize: 12, color: "#92400E" }}>
+                            — {s.msg}{s.reason && <span style={{ color: "#B45309", marginLeft: 4 }}>({s.reason})</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* RIGHT: Image */}
