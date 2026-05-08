@@ -2427,12 +2427,15 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
         {/* 콘텐츠: 프레임 그리드 + 하단 */}
         <div style={{ display: "flex", flexDirection: "column", gap: 80 }}>
           {/* 프레임 영역 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 24, padding: "0 24px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 24px" }}>
             {/* 플로우명 + 화면 수 + 회차 드롭다운 */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 4px" }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: "#474747" }}>{flow.name}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#747474" }}>{flow.frames.length}개 화면</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: "#1A1A1A", lineHeight: 1.3, letterSpacing: "-0.02em" }}>{flow.name}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: displayIter.result ? "rgba(26,26,26,0.16)" : "#24A326", flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, fontWeight: 500, color: displayIter.result ? "rgba(26,26,26,0.16)" : "#018303", lineHeight: "14px" }}>{flow.frames.length}개 화면 {displayIter.result ? "검수 완료" : "수신 완료"}</span>
+                </div>
               </div>
               <select value={displayIterIdx} onChange={e => { setViewIter(Number(e.target.value)); setSelectedFrame(null); }} style={{
                 padding: "10px 12px", borderRadius: 4, border: "none", background: "#F2F2F2",
@@ -2445,8 +2448,8 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
               </select>
             </div>
 
-            {/* 프레임 그리드 (128×180) */}
-            <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+            {/* 프레임 그리드 (128×180, #F2F2F2 배경 컨테이너) */}
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "20px 0 20px 16px", background: "#F2F2F2", borderRadius: 12 }}>
               {flow.frames.map((frame, i) => (
                 <div key={frame.id} onClick={() => setSelectedFrame(selectedFrame === i ? null : i)} style={{
                   width: 128, height: 180, flexShrink: 0, borderRadius: 8,
@@ -2457,7 +2460,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                 }}>
                   <img src={frame.image} style={{ width: "100%", flex: 1, objectFit: "cover", display: "block" }} alt={frame.name} />
                   <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "5px 8px", background: "#FCFCFC" }}>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: TEXT2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{frame.name}</span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#000", lineHeight: "14px", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{frame.name}</span>
                   </div>
                 </div>
               ))}
