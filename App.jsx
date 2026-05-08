@@ -1129,7 +1129,7 @@ async function runAIAudit(screenName, opts) {
   }
   messages[0].content.push({type:"text",text:prompt});
 
-  var apiBody = {model:"claude-opus-4-20250514",max_tokens:8000,temperature:0,messages:messages};
+  var apiBody = {model:"claude-sonnet-4-20250514",max_tokens:8000,temperature:0,messages:messages};
   if (mode==="figma"&&figmaUrl) { apiBody.mcp_servers=[{type:"url",url:"https://mcp.figma.com/mcp",name:"figma-mcp"}]; }
   if (mode==="url"||mode==="prototype") { apiBody.tools=[{type:"web_search_20250305",name:"web_search"}]; }
 
