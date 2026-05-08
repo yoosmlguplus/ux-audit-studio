@@ -2438,7 +2438,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                 </div>
               </div>
               <select value={displayIterIdx} onChange={e => { setViewIter(Number(e.target.value)); setSelectedFrame(null); }} style={{
-                padding: "10px 12px", borderRadius: 4, border: "none", background: "#F2F2F2",
+                padding: "10px 10px 10px 12px", borderRadius: 4, border: "none", background: "#F2F2F2",
                 fontSize: 14, fontWeight: 500, color: "#1A1A1A", fontFamily: "inherit",
                 cursor: "pointer", outline: "none",
               }}>
