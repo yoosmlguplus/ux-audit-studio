@@ -2472,11 +2472,12 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
             {displayIter.result ? (
               <div onClick={() => setShowResultPopup(true)} style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "12px 8px 12px 18px", borderRadius: 8, background: "#FDF1F1",
+                padding: "12px 8px 12px 18px", borderRadius: 8,
+                background: displayIter.result.verdict === "PASS" ? "#EEFBEE" : "#FDF1F1",
                 cursor: "pointer", flex: 1, transition: "background .15s",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#FCE8E8"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#FDF1F1"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = displayIter.result.verdict === "PASS" ? "#E0F5E0" : "#FCE8E8"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = displayIter.result.verdict === "PASS" ? "#EEFBEE" : "#FDF1F1"; }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
                   {/* 점수 원형 (60×60, 흰 배경 + 그림자 + stroke) */}
