@@ -2097,10 +2097,10 @@ function ResultSection({ result, iterIdx, frames, selectedFrame, setSelectedFram
 
       {/* Main: Left Image + Right Cards */}
       <div style={{ display: "flex", minHeight: 460 }}>
-        {/* LEFT: Image + Pins */}
-        <div style={{ width: "50%", borderRight: `1px solid ${BORDER}`, position: "relative", background: "#F5F5F5", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        {/* LEFT: Image */}
+        <div style={{ width: "50%", borderRight: `1px solid ${BORDER}`, background: "#F5F5F5", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 16, overflowY: "auto" }}>
           {viewFrame?.image ? (
-            <img src={viewFrame.image} style={{ maxWidth: "100%", maxHeight: 400, borderRadius: 8, objectFit: "contain", boxShadow: "0 2px 16px rgba(0,0,0,0.08)" }} alt={viewFrame.name} />
+            <img src={viewFrame.image} style={{ width: "100%", borderRadius: 8, objectFit: "contain", boxShadow: "0 2px 16px rgba(0,0,0,0.08)" }} alt={viewFrame.name} />
           ) : (
             <div style={{ color: TEXT3, fontSize: 13 }}>이미지 없음</div>
           )}
