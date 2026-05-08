@@ -925,6 +925,9 @@ function buildAllPolicyItems() {
   ];
 }
 
+// ═══════════════════════════════════════════
+// AUDIT ENGINE v2
+// ═══════════════════════════════════════════
 function buildUDSSpec() {
   var colors = [];
   Object.keys(UDS_COLORS).forEach(function(group) {
@@ -959,38 +962,12 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, service
   var pList = allItems.map(function(r){return r.id+"|"+r.msg+"|ctx:"+r.ctx;}).join("\n");
   var dList = dsRules.map(function(r){return r.id+"|"+r.rule;}).join("\n");
 
-  var udsSpec = buildUDSSpec();
+  var usabilityBlock = "";
+  if (serviceType === "usability") {
+    usabilityBlock = "\n\n## USABILITY EXPERT OPINION (사용성 검증 모드 전용)\nAfter scoring all items, provide an additional expert opinion section in the JSON response.\nAnalyze the screen from these academic/conventional UX perspectives:\n- Nielsen's 10 Heuristics (가시성, 일치성, 사용자 제어, 일관성, 오류 방지, 재인식, 유연성, 미적 설계, 오류 복구, 도움말)\n- Fitts' Law (터치 타겟 크기, CTA 배치)\n- Hick's Law (선택지 수, 인지 부하)\n- Gestalt Principles (근접성, 유사성, 연속성, 폐합)\n- Accessibility (WCAG 대비율, 키보드 접근, 스크린리더)\nProvide 3-5 key findings in 'ux_opinion' field as array of {rule, finding, suggestion} objects.\nrule: which principle, finding: Korean 1 sentence, suggestion: Korean 1 sentence.";
+  }
 
-  var ctxGuide = "\n\n## CONTEXT-AWARE FILTERING\nEach checklist item has a ctx tag. FIRST identify the screen type, THEN apply only matching items.\n\nScreen type → ctx mapping:\n- Homepage/Dashboard/Info display → all, info, list\n- Product list/Search results → all, list, info\n- Form/Input/Registration → all, form, flow\n- Error/Empty/Failure page → all, error\n- Multi-step flow screen → all, flow, form\n- Settings/Config screen → all, form\n- Detail/Content page → all, info\n\nctx meanings:\n- 'all': applies to every screen\n- 'form': only if screen has input fields, selections, or form elements\n- 'flow': only if screen is part of a multi-step journey\n- 'error': only if screen shows error, empty, failure, or exception states\n- 'list': only if screen displays lists, grids, or collections of items\n- 'info': only if screen displays informational content\n- 'dynamic': only in Figma/URL/Prototype mode (skip in image mode)\n\nIf an item's ctx does NOT match the screen type → mark as 'o' (out of scope, not scored).\nDo NOT force-fail items that are simply not relevant to this screen's purpose.";
-
-  var strictGuide = "\n\n## AUDIT RULES (CRITICAL)\n" +
-    "You must examine EVERY visible element on the screen and judge each rule against specific observations.\n\n" +
-    "### How to judge each item:\n" +
-    "1. READ the rule carefully.\n" +
-    "2. FIND the specific element(s) on the screen that this rule applies to (text, button, layout, color, etc.).\n" +
-    "3. COMPARE what you see against the rule's requirement.\n" +
-    "4. DECIDE: pass (compliant) or fail (violates). Use 'o' ONLY for ctx='dynamic' items in image mode.\n" +
-    "5. WRITE a specific reason referencing what you actually observed (e.g., '약관명 법률 용어 그대로 노출', '안내박스 내용 중복·과잉', 'CTA 문구 일반적').\n\n" +
-    "### DS Rules:\n" +
-    "- Compare EVERY visible color, font size, spacing against the UDS spec values.\n" +
-    "- If any color is not in the allowed palette → fail with the observed color noted.\n" +
-    "- If any text size doesn't match allowed sizes → fail.\n\n" +
-    "### UX Policy Rules — examine these specific elements:\n" +
-    "- CTA/Button text: Is it action-oriented and specific? ('확인','다음' = fail, '약관 동의하고 계속하기' = pass)\n" +
-    "- Text content: Is language user-friendly? (법률/내부 용어 = fail)\n" +
-    "- Information hierarchy: Are title/body/caption properly differentiated?\n" +
-    "- Information density: Too much info on one screen? Too many decisions required?\n" +
-    "- Cost/conditions visibility: Are important conditions clearly shown, not hidden?\n" +
-    "- Navigation: Is the next step clear? Can user go back?\n\n" +
-    "### UX/UI Checklist — check these:\n" +
-    "- Visual consistency: Same style for same-level elements?\n" +
-    "- Text hierarchy: Title > Body > Caption properly sized?\n" +
-    "- Touch targets: Are interactive elements large enough?\n" +
-    "- Component states: Are default/active/disabled states considered?\n\n" +
-    "### Important:\n" +
-    "- Do NOT skip in-scope items. Every in-scope item MUST be judged pass or fail.\n" +
-    "- Reason must be a SPECIFIC observation from the screen, not generic ('준수함' is NOT acceptable).\n" +
-    "- A well-designed screen typically has 5-20 issues. If you find fewer than 3, re-examine each rule more carefully against what you actually see.\n";
+  var ctxGuide = "\n\n## CONTEXT-AWARE FILTERING (CRITICAL)\nEach checklist item has a ctx tag. FIRST identify the screen type, THEN apply only matching items.\n\nScreen type → ctx mapping:\n- Homepage/Dashboard/Info display → all, info, list\n- Product list/Search results → all, list, info\n- Form/Input/Registration → all, form, flow\n- Error/Empty/Failure page → all, error\n- Multi-step flow screen → all, flow, form\n- Settings/Config screen → all, form\n- Detail/Content page → all, info\n\nctx meanings:\n- 'all': applies to every screen\n- 'form': only if screen has input fields, selections, or form elements\n- 'flow': only if screen is part of a multi-step journey\n- 'error': only if screen shows error, empty, failure, or exception states\n- 'list': only if screen displays lists, grids, or collections of items\n- 'info': only if screen displays informational content\n- 'dynamic': only in Figma/URL/Prototype mode (skip in image mode)\n\nIf an item's ctx does NOT match the screen type → mark as 'o' (out of scope, not scored).\nDo NOT force-fail items that are simply not relevant to this screen's purpose.";
 
   var modeBlock = "";
   if (mode === "figma") {
@@ -1000,54 +977,23 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, service
   } else if (mode === "url") {
     modeBlock = "Mode: LIVE URL. Use web_search to analyze page.\n- Every in-scope item MUST be p or f.\nURL: "+(extraCtx||"");
   } else {
-    modeBlock = "Mode: STATIC IMAGE — DETAILED VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' (인터랙션, 상태전환, 애니메이션 등 이미지에서 판단 불가한 항목) → always 'o'.\n- Items whose ctx doesn't match screen type → 'o'.\n- For ALL in-scope items: you MUST judge pass or fail. Do NOT mark in-scope items as 'o'.\n- Examine every text, button, layout element, color, spacing visible in the image.\n- For DS Rules: compare visible colors and font sizes against the UDS spec.\n- For UX Rules: read the actual text content on screen and evaluate against the rule.";
+    modeBlock = "Mode: STATIC IMAGE.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' → always 'o' in image mode.\n- Items whose ctx doesn't match screen type → 'o'.\n- Remaining items: judge strictly p or f based on what you SEE.";
   }
 
   var dsBlock = (mode === "prototype" || serviceType === "linked" || serviceType === "usability") ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
-  var verdictHelp = "Verdicts: p(pass), f(fail), o(out of scope/context mismatch). Reason: Korean, specific observation from the screen, 10-30 chars. Must reference actual content you see.";
+  var verdictHelp = "Verdicts: p(pass), f(fail), o(out of scope/context mismatch). Reason Korean max 15 chars.";
   var scopeFields = mode === "prototype" ? ",\"sc\":0,\"fl\":\"\",\"bd\":\"\"" : "";
 
-  // 사용성 검증 모드: 학술적 UX 원칙 + 전문가 의견
-  var usabilityBlock = "";
-  var usabilityJsonFields = "";
-  if (serviceType === "usability") {
-    usabilityBlock = "\n\n## USABILITY EXPERT MODE\n" +
-      "You are a senior UX researcher and usability expert.\n" +
-      "In addition to the Policy checklist, evaluate this screen using established UX theories:\n\n" +
-      "1. Nielsen's 10 Usability Heuristics:\n" +
-      "   - Visibility of system status\n" +
-      "   - Match between system and real world\n" +
-      "   - User control and freedom\n" +
-      "   - Consistency and standards\n" +
-      "   - Error prevention\n" +
-      "   - Recognition rather than recall\n" +
-      "   - Flexibility and efficiency of use\n" +
-      "   - Aesthetic and minimalist design\n" +
-      "   - Help users recognize, diagnose, recover from errors\n" +
-      "   - Help and documentation\n\n" +
-      "2. Cognitive Load Theory: Is the mental effort reasonable?\n" +
-      "3. Fitts's Law: Are touch targets sized and positioned appropriately?\n" +
-      "4. Gestalt Principles: Are visual groupings logical?\n" +
-      "5. Accessibility (WCAG): Color contrast, text readability, touch target size (44px+)\n\n" +
-      "Based on your analysis, provide:\n" +
-      "- 'expert': Array of 3-5 expert opinions. Each with 'type' (positive/issue/suggestion), 'principle' (which theory), and 'comment' (Korean, 2-3 sentences).\n" +
-      "- These are YOUR professional opinions beyond the checklist rules.\n" +
-      "- Focus on actionable insights that a designer can immediately apply.\n";
-    usabilityJsonFields = ",\"expert\":[{\"type\":\"issue\",\"principle\":\"Nielsen #4\",\"comment\":\"의견\"}]";
-  }
+  var uxOpinionField = serviceType === "usability" ? ",\"ux_opinion\":[{\"rule\":\"원칙\",\"finding\":\"발견\",\"suggestion\":\"제안\"}]" : "";
 
-  var roleDesc = serviceType === "usability"
-    ? "You are a senior UX researcher conducting a usability audit."
-    : "You are a professional UX/UI audit engine. Judge fairly based on rules.";
-
-  return roleDesc+"\nScreen: "+screenName+"\n\n"+modeBlock+(serviceType === "usability" ? "" : udsSpec)+strictGuide+ctxGuide+usabilityBlock+"\n\n"+verdictHelp+"\n\nPolicy("+allItems.length+"):\n"+pList+dsBlock+"\n\nONLY valid JSON:\n{\"a\":{\"p\":\"목적\",\"u\":\"사용자\",\"f\":[\"기능\"],\"t\":\"유형\",\"st\":\"screen_type\""+scopeFields+usabilityJsonFields+"},\"r\":[{\"id\":\"ID\",\"v\":\"p\",\"m\":\"근거\"}]}";
+  return "You are a UX/UI audit engine.\nScreen: "+screenName+"\n\n"+modeBlock+ctxGuide+usabilityBlock+"\n\n"+verdictHelp+"\n\nPolicy("+allItems.length+"):\n"+pList+dsBlock+"\n\nONLY valid JSON:\n{\"a\":{\"p\":\"목적\",\"u\":\"사용자\",\"f\":[\"기능\"],\"t\":\"유형\",\"st\":\"screen_type\""+scopeFields+"},\"r\":[{\"id\":\"ID\",\"v\":\"p\",\"m\":\"근거\"}]"+uxOpinionField+"}";
 }
 
 function scoreFromAIResults(aiResults, mode, serviceType) {
   const allItems = buildAllPolicyItems();
   const dsAutoRules = DS_RULES.filter(r => r.auto);
   const isProto = mode === "prototype";
-  const noDS = isProto || serviceType === "linked" || serviceType === "usability";
+  const noDS = isProto || serviceType === "linked" || serviceType === "separate" || serviceType === "usability";
 
   // DS excluded: 100% from Policy. Otherwise: Policy 60 + DS 40.
   const POLICY_MAX = noDS ? 100 : 60;
@@ -1060,7 +1006,7 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
 
   let policyLost = 0, dsLost = 0;
   const issues = [], passes = [], skipped = [], outOfScope = [];
-  const policyBreakdown = { "UX Policy": { fail: 0, total: QA_RULES.length }, "UX Checklist": { fail: 0, total: UX_CHECKLIST.length }, "UI Checklist": { fail: 0, total: UI_CHECKLIST.length } };
+  const policyBreakdown = { "UX Policy": { fail: 0, total: QA_RULES.length, oos: 0 }, "UX Checklist": { fail: 0, total: UX_CHECKLIST.length, oos: 0 }, "UI Checklist": { fail: 0, total: UI_CHECKLIST.length, oos: 0 } };
 
   const resultMap = {};
   (aiResults || []).forEach(r => { resultMap[r.id] = r; });
@@ -1073,19 +1019,14 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
     const rawV = ai?.verdict || "skip";
     const reason = ai?.reason || "";
 
-    // "o" = out of scope (prototype only) — excluded from scoring entirely
+    // "o" = out of scope — excluded from scoring entirely
     if (rawV === "o" || rawV === "out_of_scope") {
-      outOfScope.push({ id: item.id, msg: item.msg, category: item.source, reason: reason || "프로토타입 범위 밖" });
+      outOfScope.push({ id: item.id, msg: item.msg, category: item.source, reason: reason || "범위 밖" });
+      if (policyBreakdown[item.source]) policyBreakdown[item.source].oos += 1;
       return;
     }
 
-    // skip(응답 누락, 판단 불가) → 범위밖 처리
-    if (rawV === "skip") {
-      outOfScope.push({ id: item.id, msg: item.msg, category: item.source, reason: reason || "AI 응답 누락" });
-      return;
-    }
-
-    const v = rawV;
+    const v = (rawV === "skip" && isDynamic && !isProto) ? "fail" : rawV;
 
     if (v === "fail") {
       policyLost += 1;
@@ -1096,7 +1037,10 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
         const principle = pillar?.principles.find(pr => pr.id === item.principle);
         pillarName = pillar?.name; principleName = principle?.ko;
       }
-      issues.push({ id: item.id, msg: item.msg, fix: reason || "", stage: "Policy", status: "fail", category: item.source, severity: item.severity, deduction: 0, pillarName, principleName, cat: item.cat, aiReason: reason });
+      issues.push({ id: item.id, msg: item.msg, fix: reason || (rawV==="skip" ? "동적 검수 미확인" : ""), stage: "Policy", status: "fail", category: item.source, severity: item.severity, deduction: 0, pillarName, principleName, cat: item.cat, aiReason: reason });
+    } else if (v === "skip") {
+      skipped.push({ id: item.id, msg: item.msg, category: item.source, reason: reason || "이미지에서 판단 불가" });
+      if (policyBreakdown[item.source]) policyBreakdown[item.source].oos += 1;
     } else {
       passes.push({ id: item.id, msg: item.msg, stage: "Policy", status: "pass", category: item.source, aiReason: reason });
     }
@@ -1108,17 +1052,14 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
       const ai = resultMap[item.id];
       const rawV = ai?.verdict || "skip";
       const reason = ai?.reason || "";
-      if (rawV === "skip") {
-        outOfScope.push({ id: item.id, msg: item.rule, category: "DS", reason: reason || "AI 응답 누락" });
-        return;
-      }
-
-      const v = rawV;
+      const v = (rawV === "skip" && isDynamic) ? "fail" : rawV;
 
       if (v === "fail") {
         const d = +dsPerRule.toFixed(1);
         dsLost += d;
-        issues.push({ id: item.id, msg: item.rule, fix: reason || "", stage: "DS", status: "fail", category: "DS", severity: item.severity, deduction: d, aiReason: reason });
+        issues.push({ id: item.id, msg: item.rule, fix: reason || (rawV==="skip" ? "동적 검수 미확인" : ""), stage: "DS", status: "fail", category: "DS", severity: item.severity, deduction: d, aiReason: reason });
+      } else if (v === "skip") {
+        skipped.push({ id: item.id, msg: item.rule, category: "DS", reason: reason || "이미지에서 판단 불가" });
       } else {
         passes.push({ id: item.id, msg: item.rule, stage: "DS", status: "pass", category: "DS", aiReason: reason });
       }
@@ -1177,7 +1118,7 @@ async function runAIAudit(screenName, opts) {
 
   var allItems = buildAllPolicyItems();
   var dsAuto = DS_RULES.filter(function(r){return r.auto;});
-  var noDS = mode==="prototype" || serviceType==="linked" || serviceType==="usability";
+  var noDS = mode==="prototype" || serviceType==="linked" || serviceType==="separate" || serviceType==="usability";
   var extra = mode==="figma" ? figmaUrl : (mode==="url"||mode==="prototype") ? pageUrl : "";
   var prompt = buildAuditPrompt(screenName, allItems, noDS ? [] : dsAuto, mode, extra, serviceType);
 
@@ -1188,7 +1129,7 @@ async function runAIAudit(screenName, opts) {
   }
   messages[0].content.push({type:"text",text:prompt});
 
-  var apiBody = {model:"claude-sonnet-4-20250514",max_tokens:16000,temperature:0,messages:messages};
+  var apiBody = {model:"claude-sonnet-4-20250514",max_tokens:8000,temperature:0,messages:messages};
   if (mode==="figma"&&figmaUrl) { apiBody.mcp_servers=[{type:"url",url:"https://mcp.figma.com/mcp",name:"figma-mcp"}]; }
   if (mode==="url"||mode==="prototype") { apiBody.tools=[{type:"web_search_20250305",name:"web_search"}]; }
 
@@ -1220,6 +1161,7 @@ async function runAIAudit(screenName, opts) {
     var result = scoreFromAIResults(aiResults, mode, serviceType);
     result.screenAnalysis = {purpose:a.p||a.purpose||"",target_user:a.u||a.target_user||"",key_features:a.f||a.key_features||[],content_type:a.t||a.content_type||"",screenType:a.st||"",screens:a.sc||0,flow:a.fl||"",boundary:a.bd||""};
     result.expertOpinions = a.expert || [];
+    result.uxOpinion = parsed.ux_opinion || null;
     result.auditMode = mode;
     result.serviceType = serviceType;
     result.timestamp = new Date().toLocaleString("ko-KR");
