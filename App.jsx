@@ -963,17 +963,34 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, service
 
   var ctxGuide = "\n\n## CONTEXT-AWARE FILTERING\nEach checklist item has a ctx tag. FIRST identify the screen type, THEN apply only matching items.\n\nScreen type → ctx mapping:\n- Homepage/Dashboard/Info display → all, info, list\n- Product list/Search results → all, list, info\n- Form/Input/Registration → all, form, flow\n- Error/Empty/Failure page → all, error\n- Multi-step flow screen → all, flow, form\n- Settings/Config screen → all, form\n- Detail/Content page → all, info\n\nctx meanings:\n- 'all': applies to every screen\n- 'form': only if screen has input fields, selections, or form elements\n- 'flow': only if screen is part of a multi-step journey\n- 'error': only if screen shows error, empty, failure, or exception states\n- 'list': only if screen displays lists, grids, or collections of items\n- 'info': only if screen displays informational content\n- 'dynamic': only in Figma/URL/Prototype mode (skip in image mode)\n\nIf an item's ctx does NOT match the screen type → mark as 'o' (out of scope, not scored).\nDo NOT force-fail items that are simply not relevant to this screen's purpose.";
 
-  var strictGuide = "\n\n## AUDIT RULES\n" +
-    "Judge each item FAIRLY based on the rules provided.\n" +
-    "- For each rule: if the screen clearly violates it → fail. If it complies → pass. If you cannot determine from the image → 'o' (out of scope).\n" +
-    "- DS Rules: Compare visible colors, font sizes, spacings against UDS spec. Only fail if there is a CLEAR mismatch.\n" +
-    "  - Example: if a color is visibly different from the allowed palette → DS_001 fail.\n" +
-    "  - Example: if text size appears to match an allowed size → DS_002 pass.\n" +
-    "- UX Rules: Evaluate based on visible content and structure.\n" +
-    "  - If CTA text is generic ('확인', '다음') → SF_LW_01 fail.\n" +
-    "  - If information hierarchy is well structured → MS_EU_02 pass.\n" +
-    "- Be specific in reason. Describe what you observed, not just '준수함'.\n" +
-    "- Do NOT fail items just because you are uncertain. Only fail when there is clear evidence of violation.\n";
+  var strictGuide = "\n\n## AUDIT RULES (CRITICAL)\n" +
+    "You must examine EVERY visible element on the screen and judge each rule against specific observations.\n\n" +
+    "### How to judge each item:\n" +
+    "1. READ the rule carefully.\n" +
+    "2. FIND the specific element(s) on the screen that this rule applies to (text, button, layout, color, etc.).\n" +
+    "3. COMPARE what you see against the rule's requirement.\n" +
+    "4. DECIDE: pass (compliant) or fail (violates). Use 'o' ONLY for ctx='dynamic' items in image mode.\n" +
+    "5. WRITE a specific reason referencing what you actually observed (e.g., '약관명 법률 용어 그대로 노출', '안내박스 내용 중복·과잉', 'CTA 문구 일반적').\n\n" +
+    "### DS Rules:\n" +
+    "- Compare EVERY visible color, font size, spacing against the UDS spec values.\n" +
+    "- If any color is not in the allowed palette → fail with the observed color noted.\n" +
+    "- If any text size doesn't match allowed sizes → fail.\n\n" +
+    "### UX Policy Rules — examine these specific elements:\n" +
+    "- CTA/Button text: Is it action-oriented and specific? ('확인','다음' = fail, '약관 동의하고 계속하기' = pass)\n" +
+    "- Text content: Is language user-friendly? (법률/내부 용어 = fail)\n" +
+    "- Information hierarchy: Are title/body/caption properly differentiated?\n" +
+    "- Information density: Too much info on one screen? Too many decisions required?\n" +
+    "- Cost/conditions visibility: Are important conditions clearly shown, not hidden?\n" +
+    "- Navigation: Is the next step clear? Can user go back?\n\n" +
+    "### UX/UI Checklist — check these:\n" +
+    "- Visual consistency: Same style for same-level elements?\n" +
+    "- Text hierarchy: Title > Body > Caption properly sized?\n" +
+    "- Touch targets: Are interactive elements large enough?\n" +
+    "- Component states: Are default/active/disabled states considered?\n\n" +
+    "### Important:\n" +
+    "- Do NOT skip in-scope items. Every in-scope item MUST be judged pass or fail.\n" +
+    "- Reason must be a SPECIFIC observation from the screen, not generic ('준수함' is NOT acceptable).\n" +
+    "- A well-designed screen typically has 5-20 issues. If you find fewer than 3, re-examine each rule more carefully against what you actually see.\n";
 
   var modeBlock = "";
   if (mode === "figma") {
@@ -983,11 +1000,11 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, service
   } else if (mode === "url") {
     modeBlock = "Mode: LIVE URL. Use web_search to analyze page.\n- Every in-scope item MUST be p or f.\nURL: "+(extraCtx||"");
   } else {
-    modeBlock = "Mode: STATIC IMAGE — VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' (인터랙션, 상태전환, 애니메이션 등 이미지에서 판단 불가한 항목) → always 'o'.\n- Items whose ctx doesn't match screen type → 'o'.\n- For in-scope items: judge based on the rules and UDS spec provided.\n- For DS Rules: compare visible colors and font sizes against the allowed values. Only fail if there is a CLEAR visible mismatch.\n- If you cannot determine compliance from the image → mark as 'o', NOT fail.\n- Give fair judgments: pass when compliant, fail when clearly violating, 'o' when uncertain.";
+    modeBlock = "Mode: STATIC IMAGE — DETAILED VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' (인터랙션, 상태전환, 애니메이션 등 이미지에서 판단 불가한 항목) → always 'o'.\n- Items whose ctx doesn't match screen type → 'o'.\n- For ALL in-scope items: you MUST judge pass or fail. Do NOT mark in-scope items as 'o'.\n- Examine every text, button, layout element, color, spacing visible in the image.\n- For DS Rules: compare visible colors and font sizes against the UDS spec.\n- For UX Rules: read the actual text content on screen and evaluate against the rule.";
   }
 
   var dsBlock = (mode === "prototype" || serviceType === "linked" || serviceType === "usability") ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
-  var verdictHelp = "Verdicts: p(pass), f(fail), o(out of scope/context mismatch). Reason: Korean, specific observation, max 20 chars.";
+  var verdictHelp = "Verdicts: p(pass), f(fail), o(out of scope/context mismatch). Reason: Korean, specific observation from the screen, 10-30 chars. Must reference actual content you see.";
   var scopeFields = mode === "prototype" ? ",\"sc\":0,\"fl\":\"\",\"bd\":\"\"" : "";
 
   // 사용성 검증 모드: 학술적 UX 원칙 + 전문가 의견
