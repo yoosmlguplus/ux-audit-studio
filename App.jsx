@@ -2360,10 +2360,11 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
       const avgPolicy = flow.frames.length > 0 ? Math.round(totalPolicyScore / flow.frames.length) : 0;
       const avgDs = flow.frames.length > 0 ? Math.round(totalDsScore / flow.frames.length) : 0;
 
+      const noDS = serviceType === "linked" || serviceType === "usability";
       const combinedResult = {
         score: avgScore,
         verdict: avgScore >= 70 ? "PASS" : "FAIL",
-        breakdown: { policy: avgPolicy, policyMax: 60, ds: avgDs, dsMax: 40, policyDetail: {} },
+        breakdown: { policy: avgPolicy, policyMax: noDS ? 100 : 60, ds: noDS ? 0 : avgDs, dsMax: noDS ? 0 : 40, policyDetail: {} },
         issues: [...allFlowIssues, ...allScreenIssues],
         flowIssues: allFlowIssues,
         screenIssues: allScreenIssues,
