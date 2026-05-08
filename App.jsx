@@ -1388,7 +1388,7 @@ function ResultPopup({ result, onClose }) {
 // ═══════════════════════════════════════════
 // AUDIT PAGE
 // ═══════════════════════════════════════════
-function AuditPage({ archive, onAddResult, onNav, serviceType, flows, setActiveFlowId }) {
+function AuditPage({ archive, onAddResult, onNav, serviceType, flows, setActiveFlowId, setFlowServiceType }) {
   const svcCfg = {
     brand: { title: "브랜드 서비스 검수", desc: "UX Policy + Self Checklist + Design System 전체 적용", color: BRAND, scope: "Policy(60) + DS(40) = 100점" },
     linked: { title: "연계 서비스 검수", desc: "UX Policy + Self Checklist만 적용 · DS Rules 채점 제외", color: "#7C3AED", scope: "Policy 100점 (DS 제외)" },
@@ -1758,7 +1758,7 @@ function AuditPage({ archive, onAddResult, onNav, serviceType, flows, setActiveF
           {/* 헤더: space-between */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 16, fontWeight: 700, color: "#474747", lineHeight: 1.3, letterSpacing: "-0.02em" }}>최근 검수 이력</span>
-            <button onClick={() => { setActiveFlowId(null); onNav("flow-audit"); }} style={{ border: "none", background: "transparent", fontSize: 12, fontWeight: 500, color: "#747474", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>전체보기</button>
+            <button onClick={() => { setFlowServiceType(serviceType); setActiveFlowId(null); onNav("flow-audit"); }} style={{ border: "none", background: "transparent", fontSize: 12, fontWeight: 500, color: "#747474", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>전체보기</button>
           </div>
           {/* 갤러리: row, gap 12px */}
           <div style={{ display: "flex", gap: 12, overflowX: "auto" }}>
@@ -1768,7 +1768,7 @@ function AuditPage({ archive, onAddResult, onNav, serviceType, flows, setActiveF
               const isPASS = lastResult?.verdict === "PASS";
               const hasResult = !!lastResult;
               return (
-                <div key={f.id} onClick={() => { setActiveFlowId(f.id); onNav("flow-audit"); }} style={{
+                <div key={f.id} onClick={() => { setFlowServiceType(serviceType); setActiveFlowId(f.id); onNav("flow-audit"); }} style={{
                   background: "#FCFCFC", border: "1px solid #EBEBEB", borderRadius: 8,
                   padding: 12, cursor: "pointer", display: "flex", flexDirection: "column", gap: 20,
                   width: 252, flexShrink: 0, transition: "all .15s",
@@ -2181,7 +2181,7 @@ function ResultSection({ result, iterIdx, frames, selectedFrame, setSelectedFram
   );
 }
 
-function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, onAddResult }) {
+function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, onAddResult, serviceType }) {
   const [selectedFrame, setSelectedFrame] = useState(null);
   const [auditRunning, setAuditRunning] = useState(false);
   const [viewIter, setViewIter] = useState(null); // null = latest
@@ -2289,7 +2289,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
         const res = await runAIAudit(frame.name, {
           mode: "image",
           image: frame.image,
-          serviceType: "brand",
+          serviceType: serviceType || "brand",
         });
 
         if (res.error) continue;
@@ -2314,7 +2314,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
         const flowRes = await runAIAudit(`${flow.name} 플로우 (${flowPrompt})`, {
           mode: "image",
           image: flow.frames[0].image,
-          serviceType: "brand",
+          serviceType: serviceType || "brand",
         });
 
         if (!flowRes.error) {
@@ -2348,9 +2348,9 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
         outOfScopeCount: 0,
         total: allScreenIssues.length + allFlowIssues.length + allPasses.length,
         auditMode: "figma",
-        serviceType: "brand",
+        serviceType: serviceType || "brand",
         timestamp: new Date().toLocaleString("ko-KR"),
-        input: { type: "figma", screenName: flow.name, imagePreview: flow.frames[0]?.image, serviceType: "brand" },
+        input: { type: "figma", screenName: flow.name, imagePreview: flow.frames[0]?.image, serviceType: serviceType || "brand" },
         id: Date.now(),
       };
 
@@ -2545,6 +2545,7 @@ export default function App() {
   const [flows, setFlows] = useState([]);
   const [activeFlowId, setActiveFlowId] = useState(null);
   const [pluginNotice, setPluginNotice] = useState(null);
+  const [flowServiceType, setFlowServiceType] = useState("brand");
   const addResult = (r) => setArchive(prev => [...prev, r]);
 
   // Figma Plugin 데이터 폴링 (2초 간격)
@@ -2619,10 +2620,10 @@ export default function App() {
         )}
 
         {page === "dashboard" && <Dashboard onNav={setPage} />}
-        {page === "audit-brand" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="brand" flows={flows} setActiveFlowId={setActiveFlowId} />}
-        {page === "audit-linked" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="linked" flows={flows} setActiveFlowId={setActiveFlowId} />}
-        {page === "audit-usability" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="usability" flows={flows} setActiveFlowId={setActiveFlowId} />}
-        {page === "flow-audit" && <FlowAuditPage flows={flows} setFlows={setFlows} activeFlowId={activeFlowId} setActiveFlowId={setActiveFlowId} onNav={setPage} onAddResult={addResult} />}
+        {page === "audit-brand" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="brand" flows={flows} setActiveFlowId={setActiveFlowId} setFlowServiceType={setFlowServiceType} />}
+        {page === "audit-linked" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="linked" flows={flows} setActiveFlowId={setActiveFlowId} setFlowServiceType={setFlowServiceType} />}
+        {page === "audit-usability" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="usability" flows={flows} setActiveFlowId={setActiveFlowId} setFlowServiceType={setFlowServiceType} />}
+        {page === "flow-audit" && <FlowAuditPage flows={flows} setFlows={setFlows} activeFlowId={activeFlowId} setActiveFlowId={setActiveFlowId} onNav={setPage} onAddResult={addResult} serviceType={flowServiceType} />}
         {page === "results" && <ResultsPage archive={archive} onNav={setPage} />}
         {page === "qarules" && <QARulesPage />}
         {page === "checklist" && <ChecklistPage />}
