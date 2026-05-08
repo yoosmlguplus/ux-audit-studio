@@ -2593,6 +2593,17 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                     </div>
                   </div>
 
+                  {/* 이슈/통과/범위밖 칩 */}
+                  <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                    {[
+                      { label: "이슈", count: r.issues.length, bg: "#FEF2F2", c: "#DC2626" },
+                      { label: "통과", count: (r.passes || []).length, bg: "#ECFDF5", c: "#059669" },
+                      ...((r.outOfScope || []).length > 0 ? [{ label: "범위밖", count: r.outOfScope.length, bg: "#EDE9FE", c: "#6D28D9" }] : []),
+                    ].map(ch => (
+                      <span key={ch.label} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, background: ch.bg, color: ch.c, fontWeight: 600 }}>{ch.label} {ch.count}</span>
+                    ))}
+                  </div>
+
                   {/* Frame Tabs */}
                   <div style={{ display: "flex", gap: 4, marginBottom: 12, overflowX: "auto", flexWrap: "wrap" }}>
                     <button onClick={() => setSelectedFrame(null)} style={{
@@ -2640,6 +2651,10 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#7C3AED", marginBottom: 6 }}>플로우 이슈 ({flowIss.length})</div>
                       {flowIss.map((iss, i) => (
                         <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: "#F5F3FF", border: "1px solid #DDD6FE", borderLeft: "3px solid #7C3AED", marginBottom: 4 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 4, background: "#F5F3FF", color: "#7C3AED" }}>Flow</span>
+                            {iss.deduction > 0 && <span style={{ fontSize: 10, color: BRAND, fontWeight: 600, marginLeft: "auto" }}>-{iss.deduction.toFixed(1)}</span>}
+                          </div>
                           <div style={{ fontSize: 12, color: TEXT1, fontWeight: 500 }}>{iss.msg}</div>
                           {iss.fix && <div style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>→ {iss.fix}</div>}
                         </div>
@@ -2658,7 +2673,9 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                       <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: "#fff", border: `1px solid ${BORDER}`, borderLeft: `3px solid ${sc.c}`, marginBottom: 4 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
                           <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 4, background: sc.bg, color: sc.c }}>{iss.category}</span>
+                          {iss.pillarName && <span style={{ fontSize: 10, color: TEXT3 }}>{iss.pillarName}</span>}
                           {iss.frameName && selectedFrame === null && <span style={{ fontSize: 9, color: TEXT3 }}>{iss.frameName}</span>}
+                          {iss.deduction > 0 && <span style={{ fontSize: 10, color: BRAND, fontWeight: 600, marginLeft: "auto" }}>-{iss.deduction.toFixed(1)}</span>}
                         </div>
                         <div style={{ fontSize: 12, color: TEXT1, fontWeight: 500 }}>{iss.msg}</div>
                         {iss.fix && <div style={{ fontSize: 11, color: "#059669", marginTop: 2 }}>→ {iss.fix}</div>}
