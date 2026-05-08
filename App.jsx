@@ -2024,7 +2024,6 @@ function generateMockResult(flowName, frames, iterNum) {
 }
 
 function ResultSection({ result, iterIdx, frames, selectedFrame, setSelectedFrame }) {
-  const [activePin, setActivePin] = useState(null);
   const isPASS = result.verdict === "PASS";
   const flowIssues = result.flowIssues || result.issues.filter(i => i.scope === "flow");
   const screenIssues = result.screenIssues || result.issues.filter(i => i.scope === "screen");
@@ -2038,43 +2037,20 @@ function ResultSection({ result, iterIdx, frames, selectedFrame, setSelectedFram
   const dsIssues = frameIssues.filter(i => i.category === "DS");
 
   // 이슈 카드 스타일
-  const cardStyle = (iss, idx) => {
-    const isActive = activePin === idx;
-    if (iss.severity === "critical") return { bg: isActive ? "#FEE2E2" : "#FFF5F5", border: isActive ? "#F87171" : "#FECACA", accent: "#DC2626", label: "Critical" };
-    return { bg: isActive ? "#FEF3C7" : "#FFFBEB", border: isActive ? "#F59E0B" : "#FDE68A", accent: "#D97706", label: "Warning" };
-  };
-
-  // 핀 위치
-  const pinPositions = frameIssues.map((_, i) => {
-    const cols = Math.min(3, frameIssues.length);
-    const row = Math.floor(i / cols);
-    const col = i % cols;
-    const totalRows = Math.ceil(frameIssues.length / cols);
-    return {
-      left: `${15 + col * (70 / Math.max(1, cols - 1 || 1))}%`,
-      top: `${12 + row * (76 / Math.max(1, totalRows - 1 || 1))}%`,
-    };
-  });
-
-  const cardRefs = useRef([]);
-  const scrollToCard = (idx) => {
-    setActivePin(idx);
-    cardRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const cardStyle = (iss) => {
+    if (iss.severity === "critical") return { bg: "#FFF5F5", border: "#FECACA", accent: "#DC2626", label: "Critical" };
+    return { bg: "#FFFBEB", border: "#FDE68A", accent: "#D97706", label: "Warning" };
   };
 
   // 이슈 카드 렌더
-  const IssueCard = ({ iss, idx }) => {
-    const cs = cardStyle(iss, idx);
+  const IssueCard = ({ iss }) => {
+    const cs = cardStyle(iss);
     return (
-      <div ref={el => cardRefs.current[idx] = el}
-        onMouseEnter={() => setActivePin(idx)} onMouseLeave={() => setActivePin(null)}
-        style={{
-          padding: "12px 14px", borderRadius: 10, background: cs.bg,
-          border: `1.5px solid ${cs.border}`, borderLeft: `4px solid ${cs.accent}`,
-          transition: "all .15s",
-        }}>
+      <div style={{
+        padding: "12px 14px", borderRadius: 10, background: cs.bg,
+        border: `1.5px solid ${cs.border}`, borderLeft: `4px solid ${cs.accent}`,
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-          <span style={{ width: 20, height: 20, borderRadius: "50%", background: cs.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{idx + 1}</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: cs.accent }}>{cs.label}</span>
         </div>
         <div style={{ fontSize: 12, color: TEXT1, fontWeight: 500, lineHeight: 1.5 }}>{iss.msg}</div>
@@ -2124,27 +2100,7 @@ function ResultSection({ result, iterIdx, frames, selectedFrame, setSelectedFram
         {/* LEFT: Image + Pins */}
         <div style={{ width: "50%", borderRight: `1px solid ${BORDER}`, position: "relative", background: "#F5F5F5", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           {viewFrame?.image ? (
-            <>
-              <img src={viewFrame.image} style={{ maxWidth: "100%", maxHeight: 400, borderRadius: 8, objectFit: "contain", boxShadow: "0 2px 16px rgba(0,0,0,0.08)" }} alt={viewFrame.name} />
-              {frameIssues.map((iss, i) => {
-                const pos = pinPositions[i];
-                const cs = cardStyle(iss, i);
-                const isActive = activePin === i;
-                return (
-                  <div key={i} onClick={() => scrollToCard(i)}
-                    onMouseEnter={() => setActivePin(i)} onMouseLeave={() => setActivePin(null)}
-                    style={{
-                      position: "absolute", left: pos.left, top: pos.top,
-                      width: isActive ? 26 : 22, height: isActive ? 26 : 22,
-                      borderRadius: "50%", background: cs.accent, color: "#fff",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 700, cursor: "pointer",
-                      boxShadow: isActive ? `0 0 0 4px ${cs.accent}40, 0 2px 8px rgba(0,0,0,0.2)` : "0 2px 6px rgba(0,0,0,0.15)",
-                      transition: "all .15s", transform: isActive ? "scale(1.2)" : "scale(1)", zIndex: isActive ? 10 : 1,
-                    }}>{i + 1}</div>
-                );
-              })}
-            </>
+            <img src={viewFrame.image} style={{ maxWidth: "100%", maxHeight: 400, borderRadius: 8, objectFit: "contain", boxShadow: "0 2px 16px rgba(0,0,0,0.08)" }} alt={viewFrame.name} />
           ) : (
             <div style={{ color: TEXT3, fontSize: 13 }}>이미지 없음</div>
           )}
@@ -2163,7 +2119,7 @@ function ResultSection({ result, iterIdx, frames, selectedFrame, setSelectedFram
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {uxIssues.map((iss, i) => {
                   const globalIdx = frameIssues.indexOf(iss);
-                  return <IssueCard key={i} iss={iss} idx={globalIdx} />;
+                  return <IssueCard key={i} iss={iss} />;
                 })}
               </div>
             </div>
@@ -2180,7 +2136,7 @@ function ResultSection({ result, iterIdx, frames, selectedFrame, setSelectedFram
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {dsIssues.map((iss, i) => {
                   const globalIdx = frameIssues.indexOf(iss);
-                  return <IssueCard key={i} iss={iss} idx={globalIdx} />;
+                  return <IssueCard key={i} iss={iss} />;
                 })}
               </div>
             </div>
