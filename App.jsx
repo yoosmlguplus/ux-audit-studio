@@ -333,14 +333,20 @@ const stCfg = {
 // ═══════════════════════════════════════════
 // SIDEBAR
 // ═══════════════════════════════════════════
-function SideNav({ active, onNav }) {
+function SideNav({ active, onNav, flowServiceType }) {
   const [expanded, setExpanded] = useState({ audit: true, rules: true });
   const toggle = (k) => setExpanded(p => ({ ...p, [k]: !p[k] }));
 
   const auditPages = ["audit-brand", "audit-linked", "audit-usability"];
   const rulesPages = ["qarules", "checklist", "customer-exp", "tokens", "typography", "components", "dsrules", "patterns", "rules-registry"];
-  const isActive = (id) => active === id;
-  const isGroupActive = (pages) => pages.includes(active);
+
+  // flow-audit 페이지일 때 flowServiceType에 따라 해당 audit 메뉴 활성화
+  const effectiveActive = active === "flow-audit"
+    ? (flowServiceType === "linked" ? "audit-linked" : flowServiceType === "usability" ? "audit-usability" : "audit-brand")
+    : active;
+
+  const isActive = (id) => effectiveActive === id;
+  const isGroupActive = (pages) => pages.includes(effectiveActive);
 
   // Chevron SVG (피그마 원본 20×20)
   const Chevron = ({ open }) => (
@@ -2626,6 +2632,11 @@ export default function App() {
         const frames = (data.frames || []).filter(f => f.image);
         if (frames.length === 0) return;
 
+        // 플러그인에서 serviceType을 보냈으면 우선 적용
+        if (data.serviceType) {
+          setFlowServiceType(data.serviceType);
+        }
+
         setFlows(prev => {
           const existing = prev.find(f => f.name === flowName);
           if (existing) {
@@ -2662,6 +2673,8 @@ export default function App() {
           }
         });
 
+        // 서비스 유형에 맞는 사이드바 메뉴 활성화
+        const svcPage = data.serviceType === "linked" ? "audit-linked" : data.serviceType === "usability" ? "audit-usability" : "audit-brand";
         setPage("flow-audit");
         setPluginNotice("Figma에서 " + frames.length + "개 프레임 수신 완료");
         setTimeout(() => setPluginNotice(null), 4000);
@@ -2676,7 +2689,7 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: BG, color: TEXT1 }}>
-      <SideNav active={page} onNav={setPage} />
+      <SideNav active={page} onNav={setPage} flowServiceType={flowServiceType} />
       <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
         {/* Plugin 수신 알림 */}
         {pluginNotice && (
