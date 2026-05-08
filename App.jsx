@@ -1010,10 +1010,13 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
       return;
     }
 
-    // dynamic 컨텍스트(인터랙션)는 이미지에서 판단 불가 → skip 유지
-    // 그 외 skip(응답 누락)은 fail 처리
-    const isDynamicItem = (item.ctx || "").split(",").some(c => c.trim() === "dynamic");
-    const v = (rawV === "skip" && isDynamicItem && !isDynamic) ? "skip" : (rawV === "skip") ? "fail" : rawV;
+    // skip(응답 누락, 판단 불가) → 범위밖 처리
+    if (rawV === "skip") {
+      outOfScope.push({ id: item.id, msg: item.msg, category: item.source, reason: reason || "AI 응답 누락" });
+      return;
+    }
+
+    const v = rawV;
 
     if (v === "fail") {
       policyLost += 1;
@@ -1024,9 +1027,7 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
         const principle = pillar?.principles.find(pr => pr.id === item.principle);
         pillarName = pillar?.name; principleName = principle?.ko;
       }
-      issues.push({ id: item.id, msg: item.msg, fix: reason || (rawV==="skip" ? "AI 응답 누락 — 검증 불가" : ""), stage: "Policy", status: "fail", category: item.source, severity: item.severity, deduction: 0, pillarName, principleName, cat: item.cat, aiReason: reason });
-    } else if (v === "skip") {
-      skipped.push({ id: item.id, msg: item.msg, category: item.source, reason: reason || "이미지에서 인터랙션 판단 불가" });
+      issues.push({ id: item.id, msg: item.msg, fix: reason || "", stage: "Policy", status: "fail", category: item.source, severity: item.severity, deduction: 0, pillarName, principleName, cat: item.cat, aiReason: reason });
     } else {
       passes.push({ id: item.id, msg: item.msg, stage: "Policy", status: "pass", category: item.source, aiReason: reason });
     }
@@ -1038,13 +1039,17 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
       const ai = resultMap[item.id];
       const rawV = ai?.verdict || "skip";
       const reason = ai?.reason || "";
-      // DS 규칙은 시각적 검수 가능 — skip은 fail 처리
-      const v = (rawV === "skip") ? "fail" : rawV;
+      if (rawV === "skip") {
+        outOfScope.push({ id: item.id, msg: item.rule, category: "DS", reason: reason || "AI 응답 누락" });
+        return;
+      }
+
+      const v = rawV;
 
       if (v === "fail") {
         const d = +dsPerRule.toFixed(1);
         dsLost += d;
-        issues.push({ id: item.id, msg: item.rule, fix: reason || (rawV==="skip" ? "AI 응답 누락 — 검증 불가" : ""), stage: "DS", status: "fail", category: "DS", severity: item.severity, deduction: d, aiReason: reason });
+        issues.push({ id: item.id, msg: item.rule, fix: reason || "", stage: "DS", status: "fail", category: "DS", severity: item.severity, deduction: d, aiReason: reason });
       } else {
         passes.push({ id: item.id, msg: item.rule, stage: "DS", status: "pass", category: "DS", aiReason: reason });
       }
