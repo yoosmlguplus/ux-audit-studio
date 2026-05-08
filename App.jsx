@@ -2437,15 +2437,20 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                   <span style={{ fontSize: 12, fontWeight: 500, color: displayIter.result ? "rgba(26,26,26,0.16)" : "#018303", lineHeight: "14px" }}>{flow.frames.length}개 화면 {displayIter.result ? "검수 완료" : "수신 완료"}</span>
                 </div>
               </div>
-              <select value={displayIterIdx} onChange={e => { setViewIter(Number(e.target.value)); setSelectedFrame(null); }} style={{
-                padding: "10px 10px 10px 12px", borderRadius: 4, border: "none", background: "#F2F2F2",
-                fontSize: 14, fontWeight: 500, color: "#1A1A1A", fontFamily: "inherit",
-                cursor: "pointer", outline: "none",
-              }}>
-                {flow.iterations.map((iter, i) => (
-                  <option key={i} value={i}>{i + 1}회차{iter.result ? ` (${iter.result.score}점)` : " (대기)"}</option>
-                ))}
-              </select>
+              <div style={{ position: "relative" }}>
+                <select value={displayIterIdx} onChange={e => { setViewIter(Number(e.target.value)); setSelectedFrame(null); }} style={{
+                  padding: "10px 30px 10px 12px", borderRadius: 4, border: "none", background: "#F2F2F2",
+                  fontSize: 14, fontWeight: 500, color: "#1A1A1A", fontFamily: "inherit",
+                  cursor: "pointer", outline: "none", appearance: "none", WebkitAppearance: "none",
+                }}>
+                  {flow.iterations.map((iter, i) => (
+                    <option key={i} value={i}>{i + 1}회차{iter.result ? ` (${iter.result.score}점)` : " (대기)"}</option>
+                  ))}
+                </select>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                  <path d="M5 7.5L10 12.5L15 7.5" stroke="#1A1A1A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
             </div>
 
             {/* 프레임 그리드 (128×180, #F2F2F2 배경 컨테이너) */}
