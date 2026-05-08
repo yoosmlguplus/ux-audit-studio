@@ -948,19 +948,17 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, service
 
   var ctxGuide = "\n\n## CONTEXT-AWARE FILTERING\nEach checklist item has a ctx tag. FIRST identify the screen type, THEN apply only matching items.\n\nScreen type → ctx mapping:\n- Homepage/Dashboard/Info display → all, info, list\n- Product list/Search results → all, list, info\n- Form/Input/Registration → all, form, flow\n- Error/Empty/Failure page → all, error\n- Multi-step flow screen → all, flow, form\n- Settings/Config screen → all, form\n- Detail/Content page → all, info\n\nctx meanings:\n- 'all': applies to every screen\n- 'form': only if screen has input fields, selections, or form elements\n- 'flow': only if screen is part of a multi-step journey\n- 'error': only if screen shows error, empty, failure, or exception states\n- 'list': only if screen displays lists, grids, or collections of items\n- 'info': only if screen displays informational content\n- 'dynamic': only in Figma/URL/Prototype mode (skip in image mode)\n\nIf an item's ctx does NOT match the screen type → mark as 'o' (out of scope, not scored).\nDo NOT force-fail items that are simply not relevant to this screen's purpose.";
 
-  var strictGuide = "\n\n## STRICT AUDIT RULES (CRITICAL)\n" +
-    "You are a STRICT auditor. Default assumption: FAIL unless clearly compliant.\n" +
-    "- DS Rules: Compare EVERY visible element against the UDS spec above.\n" +
-    "  - If ANY color appears that is NOT in the allowed palette → DS_001 fail.\n" +
-    "  - If ANY text size does not match allowed sizes → DS_002 fail.\n" +
-    "  - If margins/padding visually deviate from spec → DS_006, DS_007 fail.\n" +
-    "  - If non-standard components are used (custom buttons, inputs) → DS_010 fail.\n" +
+  var strictGuide = "\n\n## AUDIT RULES\n" +
+    "Judge each item FAIRLY based on the rules provided.\n" +
+    "- For each rule: if the screen clearly violates it → fail. If it complies → pass. If you cannot determine from the image → 'o' (out of scope).\n" +
+    "- DS Rules: Compare visible colors, font sizes, spacings against UDS spec. Only fail if there is a CLEAR mismatch.\n" +
+    "  - Example: if a color is visibly different from the allowed palette → DS_001 fail.\n" +
+    "  - Example: if text size appears to match an allowed size → DS_002 pass.\n" +
     "- UX Rules: Evaluate based on visible content and structure.\n" +
     "  - If CTA text is generic ('확인', '다음') → SF_LW_01 fail.\n" +
-    "  - If information hierarchy is unclear → MS_EU_02 fail.\n" +
-    "  - If too many actions compete on screen → MS_FA_01 fail.\n" +
-    "- Be specific in reason. Not '준수함' but what exactly you observed.\n" +
-    "- A typical screen should have 5-15 fail items. If you have fewer than 3 fails, re-examine more strictly.\n";
+    "  - If information hierarchy is well structured → MS_EU_02 pass.\n" +
+    "- Be specific in reason. Describe what you observed, not just '준수함'.\n" +
+    "- Do NOT fail items just because you are uncertain. Only fail when there is clear evidence of violation.\n";
 
   var modeBlock = "";
   if (mode === "figma") {
@@ -970,7 +968,7 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, service
   } else if (mode === "url") {
     modeBlock = "Mode: LIVE URL. Use web_search to analyze page.\n- Every in-scope item MUST be p or f.\nURL: "+(extraCtx||"");
   } else {
-    modeBlock = "Mode: STATIC IMAGE — RULE-BASED VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' (인터랙션, 상태전환, 애니메이션 등 이미지에서 판단 불가한 항목) → always 'o'.\n- Items whose ctx doesn't match screen type → 'o'.\n- For ALL other items: judge STRICTLY based on the rules and UDS spec provided.\n- DO NOT use your own judgment. Only compare against the explicit rules and spec values.\n- For DS Rules: compare EVERY visible color against the allowed hex palette. Compare EVERY text against allowed font sizes. Compare spacing against allowed values.\n- If a visual element does NOT match the spec → FAIL. Do not guess or assume compliance.\n- If you cannot measure precisely but the element looks visually different from spec → FAIL.\n- Do NOT give benefit of the doubt. Rule violation = fail.";
+    modeBlock = "Mode: STATIC IMAGE — VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' (인터랙션, 상태전환, 애니메이션 등 이미지에서 판단 불가한 항목) → always 'o'.\n- Items whose ctx doesn't match screen type → 'o'.\n- For in-scope items: judge based on the rules and UDS spec provided.\n- For DS Rules: compare visible colors and font sizes against the allowed values. Only fail if there is a CLEAR visible mismatch.\n- If you cannot determine compliance from the image → mark as 'o', NOT fail.\n- Give fair judgments: pass when compliant, fail when clearly violating, 'o' when uncertain.";
   }
 
   var dsBlock = (mode === "prototype" || serviceType === "linked" || serviceType === "usability") ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
@@ -1008,7 +1006,7 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, service
 
   var roleDesc = serviceType === "usability"
     ? "You are a senior UX researcher conducting a usability audit."
-    : "You are a STRICT UX/UI audit engine. You must find real issues.";
+    : "You are a professional UX/UI audit engine. Judge fairly based on rules.";
 
   return roleDesc+"\nScreen: "+screenName+"\n\n"+modeBlock+(serviceType === "usability" ? "" : udsSpec)+strictGuide+ctxGuide+usabilityBlock+"\n\n"+verdictHelp+"\n\nPolicy("+allItems.length+"):\n"+pList+dsBlock+"\n\nONLY valid JSON:\n{\"a\":{\"p\":\"목적\",\"u\":\"사용자\",\"f\":[\"기능\"],\"t\":\"유형\",\"st\":\"screen_type\""+scopeFields+usabilityJsonFields+"},\"r\":[{\"id\":\"ID\",\"v\":\"p\",\"m\":\"근거\"}]}";
 }
