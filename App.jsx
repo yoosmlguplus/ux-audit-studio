@@ -2685,23 +2685,33 @@ export default function App() {
         const data = await res.json();
         if (!data || !data.type) return;
 
-        const flowName = data.flowName || "플로우 " + new Date().toLocaleDateString("ko-KR");
         const frames = (data.frames || []).filter(f => f.image);
         if (frames.length === 0) return;
+
+        // 프레임 ID 조합으로 플로우 키 생성 (정렬해서 순서 무관하게)
+        const frameIds = frames.map(f => f.id).sort().join("|");
 
         // 플러그인에서 serviceType을 보냈으면 우선 적용
         if (data.serviceType) {
           setFlowServiceType(data.serviceType);
         }
 
+        // 플로우 이름: 사용자 입력 > 프레임명 조합 자동 생성
+        const autoFlowName = frames.length <= 3
+          ? frames.map(f => f.name).join(" → ")
+          : frames[0].name + " → ... → " + frames[frames.length - 1].name + " (" + frames.length + "개)";
+        const flowName = data.flowName || autoFlowName;
+
         setFlows(prev => {
-          const existing = prev.find(f => f.name === flowName);
+          // 프레임 ID 기반 매칭 (같은 프레임 조합이면 같은 플로우)
+          const existing = prev.find(f => f.frameKey === frameIds);
           if (existing) {
             const updated = prev.map(f => {
               if (f.id !== existing.id) return f;
               return {
                 ...f,
                 frames: frames,
+                name: data.flowName || f.name, // 사용자가 새 이름 줬으면 업데이트
                 iterations: [...f.iterations, {
                   version: f.iterations.length + 1,
                   timestamp: new Date().toLocaleString("ko-KR"),
@@ -2715,6 +2725,7 @@ export default function App() {
           } else {
             const newFlow = {
               id: Date.now(),
+              frameKey: frameIds,
               name: flowName,
               frames: frames,
               timestamp: new Date().toLocaleString("ko-KR"),
