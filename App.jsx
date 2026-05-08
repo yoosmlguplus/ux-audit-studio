@@ -357,7 +357,7 @@ function SideNav({ active, onNav, flowServiceType }) {
 
   // flow-audit 페이지일 때 flowServiceType에 따라 해당 audit 메뉴 활성화
   const effectiveActive = active === "flow-audit"
-    ? (flowServiceType === "linked" ? "audit-linked" : flowServiceType === "usability" ? "audit-usability" : "audit-brand")
+    ? (flowServiceType === "separate" ? "audit-linked" : flowServiceType === "usability" ? "audit-usability" : "audit-brand")
     : active;
 
   const isActive = (id) => effectiveActive === id;
@@ -980,7 +980,7 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, service
     modeBlock = "Mode: STATIC IMAGE.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' → always 'o' in image mode.\n- Items whose ctx doesn't match screen type → 'o'.\n- Remaining items: judge strictly p or f based on what you SEE.";
   }
 
-  var dsBlock = (mode === "prototype" || serviceType === "linked" || serviceType === "usability") ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
+  var dsBlock = (mode === "prototype" || serviceType === "separate" || serviceType === "usability") ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
   var verdictHelp = "Verdicts: p(pass), f(fail), o(out of scope/context mismatch). Reason Korean max 15 chars.";
   var scopeFields = mode === "prototype" ? ",\"sc\":0,\"fl\":\"\",\"bd\":\"\"" : "";
 
@@ -993,7 +993,7 @@ function scoreFromAIResults(aiResults, mode, serviceType) {
   const allItems = buildAllPolicyItems();
   const dsAutoRules = DS_RULES.filter(r => r.auto);
   const isProto = mode === "prototype";
-  const noDS = isProto || serviceType === "linked" || serviceType === "separate" || serviceType === "usability";
+  const noDS = isProto || serviceType === "separate" || serviceType === "separate" || serviceType === "usability";
 
   // DS excluded: 100% from Policy. Otherwise: Policy 60 + DS 40.
   const POLICY_MAX = noDS ? 100 : 60;
@@ -1118,7 +1118,7 @@ async function runAIAudit(screenName, opts) {
 
   var allItems = buildAllPolicyItems();
   var dsAuto = DS_RULES.filter(function(r){return r.auto;});
-  var noDS = mode==="prototype" || serviceType==="linked" || serviceType==="separate" || serviceType==="usability";
+  var noDS = mode==="prototype" || serviceType==="separate" || serviceType==="separate" || serviceType==="usability";
   var extra = mode==="figma" ? figmaUrl : (mode==="url"||mode==="prototype") ? pageUrl : "";
   var prompt = buildAuditPrompt(screenName, allItems, noDS ? [] : dsAuto, mode, extra, serviceType);
 
@@ -1201,7 +1201,7 @@ function ResultPopup({ result, onClose }) {
             <span style={{ fontSize: 12, color: TEXT3 }}>{result.input?.screenName || "-"}</span>
             <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 20, background: isPASS ? "#ECFDF5" : "#FEF2F2", color: isPASS ? "#059669" : "#DC2626" }}>{result.verdict}</span>
             {result.auditMode && <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 12, background: result.auditMode==="figma"?"#EDE9FE":result.auditMode==="prototype"?"#F5F3FF":result.auditMode==="url"?"#DBEAFE":"#F3F4F6", color: result.auditMode==="figma"?"#7C3AED":result.auditMode==="prototype"?"#6D28D9":result.auditMode==="url"?"#2563EB":"#6B7280", fontWeight: 600 }}>{result.auditMode==="figma"?"Figma":result.auditMode==="prototype"?"Proto":result.auditMode==="url"?"URL":"Image"}</span>}
-            {result.serviceType && <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 12, background: result.serviceType==="brand"?BRAND_LOW:result.serviceType==="linked"?"#F5F3FF":"#ECFDF5", color: result.serviceType==="brand"?BRAND:result.serviceType==="linked"?"#7C3AED":"#059669", fontWeight: 600 }}>{result.serviceType==="brand"?"브랜드":result.serviceType==="linked"?"연계":result.serviceType==="usability"?"사용성":""}</span>}
+            {result.serviceType && <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 12, background: result.serviceType==="brand"?BRAND_LOW:result.serviceType==="separate"?"#F5F3FF":"#ECFDF5", color: result.serviceType==="brand"?BRAND:result.serviceType==="separate"?"#7C3AED":"#059669", fontWeight: 600 }}>{result.serviceType==="brand"?"브랜드":result.serviceType==="separate"?"연계":result.serviceType==="usability"?"사용성":""}</span>}
           </div>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${BORDER}`, background: SURFACE, cursor: "pointer", fontSize: 16, color: TEXT3, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>✕</button>
         </div>
@@ -1403,7 +1403,7 @@ function ResultPopup({ result, onClose }) {
 function AuditPage({ archive, onAddResult, onNav, serviceType, flows, setActiveFlowId, setFlowServiceType }) {
   const svcCfg = {
     brand: { title: "브랜드 서비스 검수", desc: "UX Policy + Self Checklist + Design System 전체 적용", color: BRAND, scope: "Policy(60) + DS(40) = 100점" },
-    linked: { title: "연계 서비스 검수", desc: "UX Policy + Self Checklist만 적용 · DS Rules 채점 제외", color: "#7C3AED", scope: "Policy 100점 (DS 제외)" },
+    separate: { title: "연계 서비스 검수", desc: "UX Policy + Self Checklist만 적용 · DS Rules 채점 제외", color: "#7C3AED", scope: "Policy 100점 (DS 제외)" },
     usability: { title: "사용성 검증", desc: "UX Policy + Self Checklist + 통상적·학술적 UX 룰 적용", color: "#059669", scope: "Policy 100점 (사용성 관점)" },
   }[serviceType] || { title: "UX Audit Engine", desc: "검수 모드를 선택하세요", color: BRAND, scope: "" };
   const [inputType, setInputType] = useState("flow");
@@ -1867,7 +1867,7 @@ function ResultsPage({ archive, onNav }) {
                     <span style={{ fontSize: 14, fontWeight: 600, color: TEXT1 }}>{r.input?.screenName || "—"}</span>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 10px", borderRadius: 12, background: isPASS ? "#ECFDF5" : "#FEF2F2", color: isPASS ? "#059669" : "#DC2626" }}>{r.verdict}</span>
                     {r.auditMode && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 8, background: r.auditMode==="figma"?"#EDE9FE":r.auditMode==="prototype"?"#F5F3FF":r.auditMode==="url"?"#DBEAFE":"#F3F4F6", color: r.auditMode==="figma"?"#7C3AED":r.auditMode==="prototype"?"#6D28D9":r.auditMode==="url"?"#2563EB":"#6B7280" }}>{r.auditMode==="prototype"?"Proto":r.auditMode}</span>}
-                    {r.serviceType && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 8, background: r.serviceType==="brand"?BRAND_LOW:r.serviceType==="linked"?"#F5F3FF":"#ECFDF5", color: r.serviceType==="brand"?BRAND:r.serviceType==="linked"?"#7C3AED":"#059669" }}>{r.serviceType==="brand"?"브랜드":r.serviceType==="linked"?"연계":r.serviceType==="usability"?"사용성":""}</span>}
+                    {r.serviceType && <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 8, background: r.serviceType==="brand"?BRAND_LOW:r.serviceType==="separate"?"#F5F3FF":"#ECFDF5", color: r.serviceType==="brand"?BRAND:r.serviceType==="separate"?"#7C3AED":"#059669" }}>{r.serviceType==="brand"?"브랜드":r.serviceType==="separate"?"연계":r.serviceType==="usability"?"사용성":""}</span>}
                   </div>
                   <div style={{ fontSize: 11, color: TEXT3 }}>
                     Policy {r.breakdown.policy}/{r.breakdown.policyMax}{r.breakdown.dsMax > 0 ? " · DS "+r.breakdown.ds+"/"+r.breakdown.dsMax : ""} · 이슈 {r.issues.length}건
@@ -2318,7 +2318,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
       const avgPolicy = flow.frames.length > 0 ? Math.round(totalPolicyScore / flow.frames.length) : 0;
       const avgDs = flow.frames.length > 0 ? Math.round(totalDsScore / flow.frames.length) : 0;
 
-      const noDS = serviceType === "linked" || serviceType === "usability";
+      const noDS = serviceType === "separate" || serviceType === "usability";
       const combinedResult = {
         score: avgScore,
         verdict: avgScore >= 70 ? "PASS" : "FAIL",
@@ -2358,8 +2358,8 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
     setAuditProgress("");
   };
 
-  const svcLabel = { brand: "브랜드 서비스 검수", linked: "연계 서비스 검수", usability: "외부 서비스 검증" }[serviceType] || "서비스 검수";
-  const svcDesc = { brand: "UX Policy + Checklist + Design system 전체 적용", linked: "UX Policy + Checklist만 적용 · DS Rules 채점 제외", usability: "UX Policy + Checklist + 통상적·학술적 UX 룰 적용" }[serviceType] || "";
+  const svcLabel = { brand: "브랜드 서비스 검수", separate: "연계 서비스 검수", usability: "외부 서비스 검증" }[serviceType] || "서비스 검수";
+  const svcDesc = { brand: "UX Policy + Checklist + Design system 전체 적용", separate: "UX Policy + Checklist만 적용 · DS Rules 채점 제외", usability: "UX Policy + Checklist + 통상적·학술적 UX 룰 적용" }[serviceType] || "";
 
   return (
     <div style={{ padding: "45px 0 45px 72px", maxWidth: 1288, overflowY: "auto", fontFamily: "'Pretendard',system-ui,sans-serif" }}>
@@ -2507,7 +2507,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
                   <span style={{ fontSize: 16, fontWeight: 700, color: TEXT1 }}>{flow.name}</span>
                   <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: BRAND_LOW, color: BRAND, fontWeight: 600 }}>v{displayIterIdx + 1}</span>
                   <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 20, background: isPASS ? "#ECFDF5" : "#FEF2F2", color: isPASS ? "#059669" : "#DC2626" }}>{r.verdict}</span>
-                  {r.serviceType && <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 12, background: r.serviceType==="brand"?BRAND_LOW:r.serviceType==="linked"?"#F5F3FF":"#ECFDF5", color: r.serviceType==="brand"?BRAND:r.serviceType==="linked"?"#7C3AED":"#059669", fontWeight: 600 }}>{r.serviceType==="brand"?"브랜드":r.serviceType==="linked"?"연계":"사용성"}</span>}
+                  {r.serviceType && <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 12, background: r.serviceType==="brand"?BRAND_LOW:r.serviceType==="separate"?"#F5F3FF":"#ECFDF5", color: r.serviceType==="brand"?BRAND:r.serviceType==="separate"?"#7C3AED":"#059669", fontWeight: 600 }}>{r.serviceType==="brand"?"브랜드":r.serviceType==="separate"?"연계":"사용성"}</span>}
                 </div>
                 <button onClick={() => setShowResultPopup(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${BORDER}`, background: SURFACE, cursor: "pointer", fontSize: 16, color: TEXT3, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>✕</button>
               </div>
@@ -2730,7 +2730,7 @@ export default function App() {
         });
 
         // 서비스 유형에 맞는 사이드바 메뉴 활성화
-        const svcPage = data.serviceType === "linked" ? "audit-linked" : data.serviceType === "usability" ? "audit-usability" : "audit-brand";
+        const svcPage = data.serviceType === "separate" ? "audit-linked" : data.serviceType === "usability" ? "audit-usability" : "audit-brand";
         setPage("flow-audit");
         setPluginNotice("Figma에서 " + frames.length + "개 프레임 수신 완료");
         setTimeout(() => setPluginNotice(null), 4000);
@@ -2756,7 +2756,7 @@ export default function App() {
 
         {page === "dashboard" && <Dashboard onNav={setPage} />}
         {page === "audit-brand" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="brand" flows={flows} setActiveFlowId={setActiveFlowId} setFlowServiceType={setFlowServiceType} />}
-        {page === "audit-linked" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="linked" flows={flows} setActiveFlowId={setActiveFlowId} setFlowServiceType={setFlowServiceType} />}
+        {page === "audit-linked" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="separate" flows={flows} setActiveFlowId={setActiveFlowId} setFlowServiceType={setFlowServiceType} />}
         {page === "audit-usability" && <AuditPage archive={archive} onAddResult={addResult} onNav={setPage} serviceType="usability" flows={flows} setActiveFlowId={setActiveFlowId} setFlowServiceType={setFlowServiceType} />}
         {page === "flow-audit" && <FlowAuditPage flows={flows} setFlows={setFlows} activeFlowId={activeFlowId} setActiveFlowId={setActiveFlowId} onNav={setPage} onAddResult={addResult} serviceType={flowServiceType} />}
         {page === "results" && <ResultsPage archive={archive} onNav={setPage} />}
