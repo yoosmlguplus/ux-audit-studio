@@ -934,7 +934,7 @@ function buildUDSSpec() {
     "컴포넌트: UDS 라이브러리 컴포넌트 사용 필수. 커스텀 조립 금지.\n";
 }
 
-function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx) {
+function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx, serviceType) {
   var pList = allItems.map(function(r){return r.id+"|"+r.msg+"|ctx:"+r.ctx;}).join("\n");
   var dList = dsRules.map(function(r){return r.id+"|"+r.rule;}).join("\n");
 
@@ -967,11 +967,44 @@ function buildAuditPrompt(screenName, allItems, dsRules, mode, extraCtx) {
     modeBlock = "Mode: STATIC IMAGE — RULE-BASED VISUAL AUDIT.\n- First identify screen type from the image content.\n- Apply context filtering: only score items whose ctx matches the screen type.\n- Items with ctx='dynamic' (인터랙션, 상태전환, 애니메이션 등 이미지에서 판단 불가한 항목) → always 'o'.\n- Items whose ctx doesn't match screen type → 'o'.\n- For ALL other items: judge STRICTLY based on the rules and UDS spec provided.\n- DO NOT use your own judgment. Only compare against the explicit rules and spec values.\n- For DS Rules: compare EVERY visible color against the allowed hex palette. Compare EVERY text against allowed font sizes. Compare spacing against allowed values.\n- If a visual element does NOT match the spec → FAIL. Do not guess or assume compliance.\n- If you cannot measure precisely but the element looks visually different from spec → FAIL.\n- Do NOT give benefit of the doubt. Rule violation = fail.";
   }
 
-  var dsBlock = mode === "prototype" ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
+  var dsBlock = (mode === "prototype" || serviceType === "linked" || serviceType === "usability") ? "" : "\n\nDS("+dsRules.length+"):\n"+dList;
   var verdictHelp = "Verdicts: p(pass), f(fail), o(out of scope/context mismatch). Reason: Korean, specific observation, max 20 chars.";
   var scopeFields = mode === "prototype" ? ",\"sc\":0,\"fl\":\"\",\"bd\":\"\"" : "";
 
-  return "You are a STRICT UX/UI audit engine. You must find real issues.\nScreen: "+screenName+"\n\n"+modeBlock+udsSpec+strictGuide+ctxGuide+"\n\n"+verdictHelp+"\n\nPolicy("+allItems.length+"):\n"+pList+dsBlock+"\n\nONLY valid JSON:\n{\"a\":{\"p\":\"목적\",\"u\":\"사용자\",\"f\":[\"기능\"],\"t\":\"유형\",\"st\":\"screen_type\""+scopeFields+"},\"r\":[{\"id\":\"ID\",\"v\":\"p\",\"m\":\"근거\"}]}";
+  // 사용성 검증 모드: 학술적 UX 원칙 + 전문가 의견
+  var usabilityBlock = "";
+  var usabilityJsonFields = "";
+  if (serviceType === "usability") {
+    usabilityBlock = "\n\n## USABILITY EXPERT MODE\n" +
+      "You are a senior UX researcher and usability expert.\n" +
+      "In addition to the Policy checklist, evaluate this screen using established UX theories:\n\n" +
+      "1. Nielsen's 10 Usability Heuristics:\n" +
+      "   - Visibility of system status\n" +
+      "   - Match between system and real world\n" +
+      "   - User control and freedom\n" +
+      "   - Consistency and standards\n" +
+      "   - Error prevention\n" +
+      "   - Recognition rather than recall\n" +
+      "   - Flexibility and efficiency of use\n" +
+      "   - Aesthetic and minimalist design\n" +
+      "   - Help users recognize, diagnose, recover from errors\n" +
+      "   - Help and documentation\n\n" +
+      "2. Cognitive Load Theory: Is the mental effort reasonable?\n" +
+      "3. Fitts's Law: Are touch targets sized and positioned appropriately?\n" +
+      "4. Gestalt Principles: Are visual groupings logical?\n" +
+      "5. Accessibility (WCAG): Color contrast, text readability, touch target size (44px+)\n\n" +
+      "Based on your analysis, provide:\n" +
+      "- 'expert': Array of 3-5 expert opinions. Each with 'type' (positive/issue/suggestion), 'principle' (which theory), and 'comment' (Korean, 2-3 sentences).\n" +
+      "- These are YOUR professional opinions beyond the checklist rules.\n" +
+      "- Focus on actionable insights that a designer can immediately apply.\n";
+    usabilityJsonFields = ",\"expert\":[{\"type\":\"issue\",\"principle\":\"Nielsen #4\",\"comment\":\"의견\"}]";
+  }
+
+  var roleDesc = serviceType === "usability"
+    ? "You are a senior UX researcher conducting a usability audit."
+    : "You are a STRICT UX/UI audit engine. You must find real issues.";
+
+  return roleDesc+"\nScreen: "+screenName+"\n\n"+modeBlock+(serviceType === "usability" ? "" : udsSpec)+strictGuide+ctxGuide+usabilityBlock+"\n\n"+verdictHelp+"\n\nPolicy("+allItems.length+"):\n"+pList+dsBlock+"\n\nONLY valid JSON:\n{\"a\":{\"p\":\"목적\",\"u\":\"사용자\",\"f\":[\"기능\"],\"t\":\"유형\",\"st\":\"screen_type\""+scopeFields+usabilityJsonFields+"},\"r\":[{\"id\":\"ID\",\"v\":\"p\",\"m\":\"근거\"}]}";
 }
 
 function scoreFromAIResults(aiResults, mode, serviceType) {
@@ -1110,7 +1143,7 @@ async function runAIAudit(screenName, opts) {
   var dsAuto = DS_RULES.filter(function(r){return r.auto;});
   var noDS = mode==="prototype" || serviceType==="linked" || serviceType==="usability";
   var extra = mode==="figma" ? figmaUrl : (mode==="url"||mode==="prototype") ? pageUrl : "";
-  var prompt = buildAuditPrompt(screenName, allItems, noDS ? [] : dsAuto, mode, extra);
+  var prompt = buildAuditPrompt(screenName, allItems, noDS ? [] : dsAuto, mode, extra, serviceType);
 
   var messages = [{role:"user",content:[]}];
   if ((mode==="image"||mode==="figma") && imageBase64) {
@@ -1150,6 +1183,7 @@ async function runAIAudit(screenName, opts) {
     var a=parsed.a||parsed.screen_analysis||{};
     var result = scoreFromAIResults(aiResults, mode, serviceType);
     result.screenAnalysis = {purpose:a.p||a.purpose||"",target_user:a.u||a.target_user||"",key_features:a.f||a.key_features||[],content_type:a.t||a.content_type||"",screenType:a.st||"",screens:a.sc||0,flow:a.fl||"",boundary:a.bd||""};
+    result.expertOpinions = a.expert || [];
     result.auditMode = mode;
     result.serviceType = serviceType;
     result.timestamp = new Date().toLocaleString("ko-KR");
@@ -2167,6 +2201,33 @@ function ResultSection({ result, iterIdx, frames, selectedFrame, setSelectedFram
             </div>
           )}
 
+          {/* Expert Opinions (사용성 검증 모드) */}
+          {result.expertOpinions && result.expertOpinions.length > 0 && (
+            <div style={{ marginTop: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <div style={{ width: 3, height: 14, borderRadius: 2, background: "#2563EB" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB" }}>UX 전문가 의견</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {result.expertOpinions.map((op, i) => {
+                  const typeColor = op.type === "positive" ? "#059669" : op.type === "issue" ? "#DC2626" : "#2563EB";
+                  const typeBg = op.type === "positive" ? "#F0FDF4" : op.type === "issue" ? "#FFF5F5" : "#EFF6FF";
+                  const typeBorder = op.type === "positive" ? "#A7F3D0" : op.type === "issue" ? "#FECACA" : "#BFDBFE";
+                  const typeLabel = op.type === "positive" ? "긍정" : op.type === "issue" ? "이슈" : "제안";
+                  return (
+                    <div key={i} style={{ padding: "12px 14px", borderRadius: 10, background: typeBg, border: `1.5px solid ${typeBorder}`, borderLeft: `4px solid ${typeColor}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: typeColor, color: "#fff" }}>{typeLabel}</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: typeColor }}>{op.principle}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: TEXT1, fontWeight: 500, lineHeight: 1.6 }}>{op.comment}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Empty */}
           {frameIssues.length === 0 && (
             <div style={{ padding: "40px 16px", textAlign: "center" }}>
@@ -2277,6 +2338,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
       const allScreenIssues = [];
       const allFlowIssues = [];
       const allPasses = [];
+      const allExpertOpinions = [];
       let totalScore = 0;
       let totalPolicyScore = 0;
       let totalDsScore = 0;
@@ -2300,6 +2362,9 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
         });
         (res.passes || []).forEach(p => {
           allPasses.push({ ...p, frameName: frame.name, frameIdx: i });
+        });
+        (res.expertOpinions || []).forEach(op => {
+          allExpertOpinions.push({ ...op, frameName: frame.name });
         });
 
         totalScore += res.score || 0;
@@ -2341,6 +2406,7 @@ function FlowAuditPage({ flows, setFlows, activeFlowId, setActiveFlowId, onNav, 
         screenIssues: allScreenIssues,
         passes: allPasses,
         frameNames: flow.frames.map(f => f.name),
+        expertOpinions: allExpertOpinions,
         skipped: [],
         outOfScope: [],
         scoredCount: allScreenIssues.length + allPasses.length,
