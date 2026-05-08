@@ -1158,6 +1158,7 @@ async function runAIAudit(screenName, opts) {
     });
 
     var a=parsed.a||parsed.screen_analysis||{};
+    console.log("[AUDIT] AI results count:", aiResults.length, "pass:", aiResults.filter(r=>r.verdict==="pass").length, "fail:", aiResults.filter(r=>r.verdict==="fail").length, "skip:", aiResults.filter(r=>r.verdict==="skip").length, "o:", aiResults.filter(r=>r.verdict==="o").length);
     var result = scoreFromAIResults(aiResults, mode, serviceType);
     result.screenAnalysis = {purpose:a.p||a.purpose||"",target_user:a.u||a.target_user||"",key_features:a.f||a.key_features||[],content_type:a.t||a.content_type||"",screenType:a.st||"",screens:a.sc||0,flow:a.fl||"",boundary:a.bd||""};
     result.expertOpinions = a.expert || [];
